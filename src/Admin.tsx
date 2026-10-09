@@ -256,6 +256,7 @@ function ProductEditor({
                   : draft.image
               }
               alt="Prévia da capa"
+              decoding="async"
             />
           )}
           <label className="upload-box">
@@ -285,7 +286,12 @@ function ProductEditor({
             {draft.gallery.map((media, index) => (
               <div key={`${media.url}-${index}`}>
                 {media.type === "image" ? (
-                  <img src={media.url} alt={media.caption} />
+                  <img
+                    src={media.url}
+                    alt={media.caption}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <span>Vídeo</span>
                 )}
@@ -567,6 +573,8 @@ function Editor({
                   <img
                     src={m.url.startsWith("assets/") ? asset(m.url) : m.url}
                     alt={m.caption}
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <span>Vídeo {i + 1}</span>

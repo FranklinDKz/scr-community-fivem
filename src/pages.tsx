@@ -59,6 +59,7 @@ export function ResourceCard({ resource: r }: { resource: Resource }) {
             src={source(r.media.find((m) => m.type === "image")!.url)}
             alt=""
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="cover-placeholder">
@@ -228,6 +229,8 @@ export function Home() {
           className="hero-image"
           src={asset("assets/scene.png")}
           alt="Cena ilustrativa de um carro esportivo em uma cidade à noite"
+          decoding="async"
+          fetchPriority="high"
         />
         <div className="hero-overlay" />
         <div className="container hero-content">
@@ -433,6 +436,7 @@ export function Home() {
           src={asset("assets/banner.png")}
           alt="ScR Community"
           loading="lazy"
+          decoding="async"
         />
       </section>
       <section className="container faq section">
@@ -561,6 +565,7 @@ function Gallery({ media }: { media: Media[] }) {
               <img
                 src={source(current.url)}
                 alt={current.caption || "Imagem do resource"}
+                decoding="async"
               />
             ) : videoUrl(current.url) ? (
               <iframe
@@ -604,7 +609,12 @@ function Gallery({ media }: { media: Media[] }) {
                   aria-pressed={i === index}
                 >
                   {m.type === "image" ? (
-                    <img src={source(m.url)} alt="" />
+                    <img
+                      src={source(m.url)}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <Play size={24} />
                   )}

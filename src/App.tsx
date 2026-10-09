@@ -72,6 +72,38 @@ type Context = {
 };
 const AppContext = createContext<Context>(null!);
 export const useApp = () => useContext(AppContext);
+
+function FirstVisitIntro() {
+  return (
+    <div
+      className="site-intro"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Preparando a ScR Community"
+    >
+      <div className="site-intro-particles" aria-hidden="true" />
+      <div className="site-intro-content">
+        <div className="site-intro-brand">
+          <img src={asset("assets/logo.png")} alt="" />
+          <span>ScR Community</span>
+        </div>
+        <span className="site-intro-kicker">Free Resources FiveM</span>
+        <h1>Preparando sua próxima cidade.</h1>
+        <p>Organizando resources, mapas, bases e serviços para você.</p>
+        <div className="site-intro-progress" aria-hidden="true">
+          <i />
+        </div>
+        <div className="site-intro-status" aria-hidden="true">
+          <span>Verificando catálogo</span>
+          <span>Carregando experiência</span>
+          <span>Tudo pronto</span>
+        </div>
+        <small>A primeira abertura leva 10 segundos.</small>
+      </div>
+    </div>
+  );
+}
+
 export function Button({
   children,
   className = "",
@@ -335,6 +367,17 @@ export default function App() {
     [loadError, setLoadError] = useState(""),
     [notification, setNotification] = useState(""),
     [menu, setMenu] = useState(false),
+    [introVisible, setIntroVisible] = useState(() => {
+      try {
+        return !(
+          localStorage.getItem("scr_intro_complete") === "1" ||
+          localStorage.getItem("scr_preferences") ||
+          localStorage.getItem("scr_visitor_id")
+        );
+      } catch {
+        return true;
+      }
+    }),
     [checkout, setCheckout] = useState<{
       sku: string;
       title: string;
@@ -357,6 +400,7 @@ export default function App() {
   });
   const location = useLocation();
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const audioContext = useRef<AudioContext | null>(null);
   const toast = (message: string) => {
     setNotification(message);
     clearTimeout(timer.current);
@@ -393,6 +437,32 @@ export default function App() {
     return () => clearTimeout(timer.current);
   }, []);
   useEffect(() => {
+    if (!introVisible) return;
+    document.body.classList.add("intro-active");
+    const introTimer = window.setTimeout(() => {
+      try {
+        localStorage.setItem("scr_intro_complete", "1");
+      } catch {
+        // The intro still completes when storage is unavailable.
+      }
+      document.body.classList.remove("intro-active");
+      setIntroVisible(false);
+    }, 10_000);
+    return () => {
+      window.clearTimeout(introTimer);
+      document.body.classList.remove("intro-active");
+    };
+  }, [introVisible]);
+  useEffect(() => {
+    if (!introVisible || !me.user) return;
+    try {
+      localStorage.setItem("scr_intro_complete", "1");
+    } catch {
+      // Logged-in visitors can continue even when storage is unavailable.
+    }
+    setIntroVisible(false);
+  }, [introVisible, me.user]);
+  useEffect(() => {
     setMenu(false);
     window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -419,10 +489,6 @@ export default function App() {
       ".table-wrap",
     ].join(",");
     const targets = document.querySelectorAll<HTMLElement>(selector);
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      targets.forEach((target) => target.classList.add("is-visible"));
-      return;
-    }
     document.documentElement.classList.add("motion-ready");
     targets.forEach((target, index) => {
       target.classList.add("reveal-target");
@@ -456,7 +522,9 @@ export default function App() {
     const click = (event: PointerEvent) => {
       if (!(event.target as Element | null)?.closest("button,a,[role=button]"))
         return;
-      const context = new AudioContext();
+      const context = audioContext.current || new AudioContext();
+      audioContext.current = context;
+      if (context.state === "suspended") void context.resume();
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       oscillator.type = "sine";
@@ -473,10 +541,13 @@ export default function App() {
       oscillator.connect(gain).connect(context.destination);
       oscillator.start();
       oscillator.stop(context.currentTime + 0.055);
-      oscillator.addEventListener("ended", () => void context.close());
     };
     document.addEventListener("pointerup", click);
-    return () => document.removeEventListener("pointerup", click);
+    return () => {
+      document.removeEventListener("pointerup", click);
+      if (audioContext.current) void audioContext.current.close();
+      audioContext.current = null;
+    };
   }, [preferences.sound]);
   useEffect(() => {
     if (preview || preferences.consent !== "all") return;
@@ -520,6 +591,7 @@ export default function App() {
         setPreferences,
       }}
     >
+      {introVisible && <FirstVisitIntro />}
       <a className="skip-link" href="#main">
         Pular para o conteúdo
       </a>
