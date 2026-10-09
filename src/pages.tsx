@@ -1752,11 +1752,11 @@ export function Legal({ privacy = false }: { privacy?: boolean }) {
           <h2>Pagamentos e assistência com IA</h2>
           <p>
             Os dados de cartão são tratados diretamente pelo provedor de
-            pagamento. Quando você usa a IA ScR, o texto da conversa é enviado à
-            OpenAI para gerar a resposta. Não envie senhas, tokens, dados
-            pessoais de jogadores ou informações confidenciais. As conversas
-            ficam na tela durante a sessão; o site não mantém um histórico
-            persistente de IA.
+            pagamento. Quando você usa a IA ScR, o texto da conversa é
+            processado pelo Cloudflare Workers AI para gerar a resposta. Não
+            envie senhas, tokens, dados pessoais de jogadores ou informações
+            confidenciais. As conversas ficam na tela durante a sessão; o site
+            não mantém um histórico persistente de IA.
           </p>
           <h2>Cookies e retenção</h2>
           <p>

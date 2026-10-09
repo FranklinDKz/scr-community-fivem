@@ -52,11 +52,12 @@ Variáveis públicas ficam em `wrangler.jsonc`. Segredos devem ser cadastrados c
 
 - `PASSWORD_PEPPER`: valor aleatório longo para proteger senhas;
 - `DISCORD_CLIENT_ID` e `DISCORD_CLIENT_SECRET`: login pelo Discord;
-- `OPENAI_API_KEY`: IA do plano de suporte;
 - `ADMIN_DISCORD_IDS`: opção de emergência para IDs administrativos;
 - `MERCADOPAGO_*`: fallback opcional, pois o checkout principal usa InfinitePay.
 
 O dono do servidor `ScR Community` recebe permissão administrativa automaticamente ao entrar pelo Discord, usando a confirmação de propriedade devolvida pelo próprio Discord.
+
+A IA ScR usa o binding nativo do Cloudflare Workers AI configurado em `wrangler.jsonc`, sem chave externa no navegador ou no repositório.
 
 Atualize `APP_URL` para o endereço final antes de configurar o callback do Discord:
 

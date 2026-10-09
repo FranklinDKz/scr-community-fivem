@@ -14,6 +14,7 @@ interface Env {
   DB: D1Database;
   FILES: R2Bucket;
   ASSETS: Fetcher;
+  AI: Ai;
   APP_URL: string;
   ADMIN_DISCORD_IDS: string;
   ADMIN_EMAILS: string;
@@ -25,8 +26,6 @@ interface Env {
   MERCADOPAGO_WEBHOOK_SECRET?: string;
   MERCADOPAGO_COLLECTOR_ID?: string;
   PAYMENT_TEST_MODE?: string;
-  OPENAI_API_KEY?: string;
-  OPENAI_MODEL?: string;
 }
 type User = {
   id: string;
@@ -290,7 +289,7 @@ async function route(req: Request, env: Env): Promise<Response> {
           env.MERCADOPAGO_WEBHOOK_SECRET &&
           env.MERCADOPAGO_COLLECTOR_ID)
       ),
-      ai: !!env.OPENAI_API_KEY,
+      ai: true,
     });
   if (p === "/api/auth/register" && method === "POST") {
     if (!env.PASSWORD_PEPPER)
@@ -917,11 +916,6 @@ async function route(req: Request, env: Env): Promise<Response> {
         "A IA ScR está incluída no plano de suporte.",
         "SUPPORT_REQUIRED",
       );
-    if (!env.OPENAI_API_KEY)
-      throw new HttpError(
-        503,
-        "A IA está temporariamente indisponível. Abra um chamado com a equipe.",
-      );
     const { messages } = z
       .object({
         messages: z
@@ -947,31 +941,22 @@ async function route(req: Request, env: Env): Promise<Response> {
         "Você atingiu as 30 mensagens de IA de hoje. O suporte da equipe continua disponível.",
       );
     try {
-      const res = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + env.OPENAI_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: env.OPENAI_MODEL || "gpt-4.1-mini",
-          instructions:
-            "Você é a IA ScR, assistente técnico de FiveM. Responda em português. Ajude com Lua, recursos, logs, instalação e configuração. Explique incertezas, solicite framework e logs quando necessário. Nunca peça senhas ou tokens. Não afirme executar ou testar código. Não ensine a contornar licenças, anticheats ou distribuir conteúdo sem autorização.",
-          input: messages,
-          max_output_tokens: 1800,
-          store: false,
-        }),
-        signal: AbortSignal.timeout(45000),
-      });
-      if (!res.ok) throw new Error("ai-unavailable");
-      const data = (await res.json()) as {
-        output?: { content?: { type: string; text?: string }[] }[];
+      const data = (await env.AI.run("@cf/google/gemma-4-26b-a4b-it", {
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é a IA ScR, assistente técnico de FiveM. Responda em português. Ajude com Lua, resources, logs, instalação e configuração. Explique incertezas, solicite framework e logs quando necessário. Nunca peça senhas ou tokens. Não afirme executar ou testar código. Não ensine a contornar licenças, anticheats ou distribuir conteúdo sem autorização.",
+          },
+          ...messages,
+        ],
+        max_tokens: 1800,
+        chat_template_kwargs: { enable_thinking: false },
+      })) as {
+        choices?: { message?: { content?: string } }[];
+        response?: string;
       };
-      const answer = data.output
-        ?.flatMap((o) => o.content || [])
-        .filter((c) => c.type === "output_text")
-        .map((c) => c.text)
-        .join("\n");
+      const answer = data.choices?.[0]?.message?.content || data.response;
       if (!answer) throw new Error("empty-ai-response");
       return json({ answer });
     } catch {

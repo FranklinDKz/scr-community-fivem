@@ -18,12 +18,12 @@
     },
   ],
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "scr-community-files" }],
+  "ai": { "binding": "AI" },
   "vars": {
     "APP_URL": "https://scr-community.dk-rp.workers.dev",
     "ADMIN_DISCORD_IDS": "",
     "ADMIN_EMAILS": "",
     "INFINITEPAY_HANDLE": "razielrv7",
-    "OPENAI_MODEL": "gpt-4.1-mini",
   },
   "triggers": { "crons": ["0 6 * * *"] },
 }
