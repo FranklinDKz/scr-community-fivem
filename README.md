@@ -2,6 +2,8 @@
 
 Portal público da ScR Community para publicar resources gratuitos, vender bases e scripts, oferecer suporte e divulgar projetos FiveM.
 
+Site publicado: https://scr-community.dk-rp.workers.dev
+
 ## O que está incluído
 
 - catálogo de scripts e mapas com busca, filtros, galeria, vídeos e downloads protegidos;
