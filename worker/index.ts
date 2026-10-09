@@ -15,6 +15,8 @@ interface Env {
   FILES: R2Bucket;
   ASSETS: Fetcher;
   AI: Ai;
+  API_RATE_LIMITER: RateLimit;
+  AUTH_RATE_LIMITER: RateLimit;
   APP_URL: string;
   ADMIN_DISCORD_IDS: string;
   ADMIN_EMAILS: string;
@@ -266,6 +268,22 @@ async function route(req: Request, env: Env): Promise<Response> {
     p = url.pathname,
     method = req.method;
   if (!p.startsWith("/api/")) return env.ASSETS.fetch(req);
+  const edgeLimit = await env.API_RATE_LIMITER.limit({ key: clientIp(req) });
+  if (!edgeLimit.success)
+    throw new HttpError(429, "Muitas requisições. Aguarde um minuto.");
+  if (
+    method === "POST" &&
+    (p === "/api/auth/login" || p === "/api/auth/register")
+  ) {
+    const authLimit = await env.AUTH_RATE_LIMITER.limit({
+      key: clientIp(req),
+    });
+    if (!authLimit.success)
+      throw new HttpError(
+        429,
+        "Muitas tentativas de acesso. Aguarde um minuto.",
+      );
+  }
   if (
     ["POST", "PUT", "DELETE", "PATCH"].includes(method) &&
     !p.startsWith("/api/webhooks/")
@@ -972,7 +990,7 @@ async function route(req: Request, env: Env): Promise<Response> {
     }
   }
   if (p.startsWith("/api/admin")) {
-    requireAdmin(user);
+    const admin = requireAdmin(user);
     if (p === "/api/admin/analytics" && method === "GET") {
       const [summary, daily, pages, users, recent] = await env.DB.batch([
         env.DB.prepare(
@@ -1075,6 +1093,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       return json({ ok: true });
     }
     if (p === "/api/admin/upload" && method === "POST") {
+      await rate(env, "admin-upload:" + admin.id, 12, 3600);
       const form = await limited(req, 55 * 1024 * 1024).formData();
       const file = form.get("file");
       if (!(file instanceof File))
@@ -1215,6 +1234,14 @@ export default {
       "camera=(), microphone=(), geolocation=()",
     );
     headers.set("X-Frame-Options", "DENY");
+    headers.set("Cross-Origin-Opener-Policy", "same-origin");
+    headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    headers.set("X-Permitted-Cross-Domain-Policies", "none");
+    if (env.APP_URL.startsWith("https:"))
+      headers.set(
+        "Strict-Transport-Security",
+        "max-age=31536000; includeSubDomains",
+      );
     if (
       new URL(req.url).pathname.startsWith("/api/") &&
       !new URL(req.url).pathname.startsWith("/api/media/")
@@ -1223,7 +1250,7 @@ export default {
     if (!new URL(req.url).pathname.startsWith("/api/"))
       headers.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests",
       );
     return new Response(response.body, { status: response.status, headers });
   },

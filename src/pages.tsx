@@ -251,6 +251,9 @@ export function Home() {
             <Link className="button glass" to="/loja">
               Conhecer nossas bases
             </Link>
+            <Link className="button promo" to="/loja?tab=divulgue">
+              <Sparkles size={17} /> Divulgue seu projeto
+            </Link>
           </div>
           <div className="hero-bottom">
             <span>
@@ -295,6 +298,53 @@ export function Home() {
           </div>
         </div>
       </div>
+      <section className="promotion-spotlight">
+        <div className="container promotion-spotlight-inner">
+          <div className="promotion-spotlight-copy">
+            <span className="eyebrow">Espaço para criadores e comunidades</span>
+            <h2>
+              Venda seus scripts.
+              <br />
+              Mostre seus mapas.
+            </h2>
+            <p>
+              Anuncie seu trabalho para quem já procura resources de FiveM. Você
+              escolhe o plano, envia descrição, imagens, vídeo, preço e link de
+              contato; a equipe ScR revisa e publica sua vitrine.
+            </p>
+            <div className="promotion-spotlight-actions">
+              <Link className="button primary" to="/loja?tab=divulgue">
+                <Sparkles size={17} /> Quero divulgar
+              </Link>
+              <a
+                className="button glass"
+                href={discordChannel("1480286534912704585")}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Divulgar no Discord <ExternalLink size={15} />
+              </a>
+            </div>
+          </div>
+          <div className="promotion-spotlight-plans">
+            <div>
+              <span>Script ou mapa</span>
+              <strong>{money(799)}</strong>
+              <small>7 dias no site</small>
+            </div>
+            <div className="featured">
+              <span>Script ou mapa</span>
+              <strong>{money(2499)}</strong>
+              <small>30 dias no site</small>
+            </div>
+            <div>
+              <span>Cidade ou comunidade</span>
+              <strong>{money(7990)}</strong>
+              <small>30 dias no site</small>
+            </div>
+          </div>
+        </div>
+      </section>
       <section className="container section">
         <div className="section-heading">
           <div>
@@ -697,7 +747,12 @@ export function ResourcePage() {
   );
 }
 export function Store() {
-  const [filter, setFilter] = useState("bases");
+  const [params, setParams] = useSearchParams();
+  const tabs = ["bases", "scripts", "servicos", "parceiros", "divulgue"];
+  const requestedTab = params.get("tab") || "bases";
+  const [filter, setFilter] = useState(
+    tabs.includes(requestedTab) ? requestedTab : "bases",
+  );
   const { buy } = useApp();
   const icons: Record<string, typeof Code2> = {
     city: Building2,
@@ -711,6 +766,10 @@ export function Store() {
     megaphone: Sparkles,
     lock: LockKeyhole,
   };
+  function changeFilter(value: string) {
+    setFilter(value);
+    setParams(value === "bases" ? {} : { tab: value }, { replace: true });
+  }
   return (
     <div className="container page">
       <div className="store-heading">
@@ -742,7 +801,7 @@ export function Store() {
           <button
             className={filter === value ? "active" : ""}
             aria-pressed={filter === value}
-            onClick={() => setFilter(value)}
+            onClick={() => changeFilter(value)}
             key={value}
           >
             {label}
@@ -888,10 +947,40 @@ export function Store() {
               </Button>
             </article>
           </div>
+          <div className="promotion-how">
+            {[
+              [
+                "01",
+                "Escolha o plano",
+                "7 ou 30 dias para resources; 30 dias para cidade ou comunidade.",
+              ],
+              [
+                "02",
+                "Finalize a compra",
+                "O acesso para enviar o anúncio aparece automaticamente na sua conta.",
+              ],
+              [
+                "03",
+                "Envie os materiais",
+                "Informe título, descrição, preço, contato e links de imagens ou vídeo.",
+              ],
+              [
+                "04",
+                "Revisão e publicação",
+                "A equipe ScR confere o material e monta sua vitrine no site.",
+              ],
+            ].map(([number, title, description]) => (
+              <div key={number}>
+                <strong>{number}</strong>
+                <span>{title}</span>
+                <small>{description}</small>
+              </div>
+            ))}
+          </div>
           <div className="notice">
-            <MessageCircle size={18} /> A publicação no Discord é contratada à
-            parte. Depois da compra, abra um ticket para enviar os materiais e
-            solicitar a divulgação no servidor.
+            <MessageCircle size={18} /> Depois da compra, abra “Minha conta” e
+            use “Enviar materiais”. Para aparecer também no Discord, abra um
+            ticket no canal de divulgação; esse serviço é combinado à parte.
           </div>
         </section>
       )}

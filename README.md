@@ -81,6 +81,9 @@ Depois da publicação, cadastre os ZIPs das bases no painel. A compra online de
 - Senhas recebem PBKDF2 com salt individual e pepper mantido como segredo.
 - Cookies de sessão usam HttpOnly, Secure em produção e SameSite=Lax.
 - Pagamentos InfinitePay são validados novamente em `/payment_check`; redirects e webhooks nunca liberam acesso sozinhos.
+- A API possui rate limiting no edge do Cloudflare e limites adicionais por conta, IP e operação sensível.
+- ZIPs de resources ficam em bucket R2 privado e só são entregues depois da autorização do usuário.
+- CSP, HSTS, bloqueio de iframes, políticas de origem e validação de tipo de arquivo reduzem a superfície do navegador e dos uploads.
 - Mídias e ZIPs são validados, ficam no R2 e downloads pagos são servidos por rotas autorizadas.
 - Métricas e IPs só ficam visíveis no painel do dono e são removidos após 90 dias.
 - Recursos só podem ser publicados com arquivo, licença/autorização e confirmação da revisão.
