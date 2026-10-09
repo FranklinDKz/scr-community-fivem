@@ -394,6 +394,54 @@ export default function App() {
     setMenu(false);
     window.scrollTo(0, 0);
   }, [location.pathname]);
+  useEffect(() => {
+    const selector = [
+      ".promotion-spotlight-inner > *",
+      ".section-heading > *",
+      ".resource-card",
+      ".quality",
+      ".product-card",
+      ".support-teaser > *",
+      ".community > *",
+      ".faq details",
+      ".store-heading > *",
+      ".service-card",
+      ".partner-card",
+      ".promotion-plans article",
+      ".promotion-how > div",
+      ".detail-grid > *",
+      ".account-access",
+      ".profile-settings",
+      ".admin-publish-guide",
+      ".admin-stats > div",
+      ".table-wrap",
+    ].join(",");
+    const targets = document.querySelectorAll<HTMLElement>(selector);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      targets.forEach((target) => target.classList.add("is-visible"));
+      return;
+    }
+    document.documentElement.classList.add("motion-ready");
+    targets.forEach((target, index) => {
+      target.classList.add("reveal-target");
+      target.style.setProperty(
+        "--reveal-delay",
+        `${Math.min(index % 4, 3) * 65}ms`,
+      );
+    });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          (entry.target as HTMLElement).classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -7% 0px" },
+    );
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [location.pathname, resources.length, products.length]);
   const setPreferences = (value: {
     consent: "all" | "essential";
     sound: boolean;
@@ -533,7 +581,7 @@ export default function App() {
           </div>
         </div>
       </header>
-      <main id="main">
+      <main id="main" className="page-shell" key={location.pathname}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/resources" element={<Catalog />} />
