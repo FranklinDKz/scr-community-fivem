@@ -232,42 +232,41 @@ export function Home() {
         <div className="hero-overlay" />
         <div className="container hero-content">
           <div className="hero-tag">
-            <span className="tag-line" /> Sua próxima cidade começa aqui
+            <span className="tag-line" /> ScR Community, edição 2026
           </div>
           <h1>
-            TODO O FIVEM.
+            Tudo para o seu FiveM.
             <br />
-            EM UM SÓ LUGAR.
+            Sem caça ao tesouro.
           </h1>
           <p>
-            Chega de procurar scripts e mapas em vários Discords. Encontre os
-            resources para transformar sua cidade, com a curadoria da ScR
-            Community.
+            Scripts, mapas, bases e suporte reunidos em um catálogo cuidado por
+            quem trabalha com FiveM todos os dias.
           </p>
           <div className="hero-actions">
             <Link className="button primary" to="/resources">
               <Download size={18} />
               Explorar resources
             </Link>
-            <Link className="button glass" to="/loja">
-              Conhecer nossas bases
-            </Link>
             <Link className="button promo" to="/loja?tab=divulgue">
               <Sparkles size={17} /> Divulgue seu projeto
+            </Link>
+            <Link className="button glass" to="/loja">
+              Conhecer nossas bases
             </Link>
           </div>
           <div className="hero-bottom">
             <span>
-              <Code2 size={16} /> Scripts & mapas gratuitos
+              <Code2 size={16} /> Gratuitos e exclusivos
             </span>
             <i />
             <span>
-              <ShieldCheck size={16} /> Curadoria ScR
+              <ShieldCheck size={16} /> Revisados pela equipe ScR
             </span>
           </div>
         </div>
         <div className="hero-caption">
-          ScR Community <span>/</span> Built for your city.
+          Um arquivo vivo para quem constrói cidades.
         </div>
       </section>
       <div className="trust-strip">
@@ -275,26 +274,26 @@ export function Home() {
           <div>
             <ShieldCheck />
             <span>
-              Revisão pela equipe<strong>Cuidado em cada publicação</strong>
+              Revisão humana<strong>Arquivo conferido antes de publicar</strong>
             </span>
           </div>
           <div>
             <Terminal />
             <span>
               Prontos para configurar
-              <strong>Instruções e compatibilidade</strong>
+              <strong>Compatibilidade explicada sem enrolação</strong>
             </span>
           </div>
           <div>
             <Gauge />
             <span>
-              Foco em performance<strong>Mais atenção à sua cidade</strong>
+              Foco em performance<strong>Menos peso, menos retrabalho</strong>
             </span>
           </div>
           <div>
             <MessageCircle />
             <span>
-              Uma comunidade de verdade<strong>De dev para dev</strong>
+              Suporte próximo<strong>Você fala com quem entende</strong>
             </span>
           </div>
         </div>
@@ -304,9 +303,8 @@ export function Home() {
           <div className="promotion-spotlight-copy">
             <span className="eyebrow">Espaço para criadores e comunidades</span>
             <h2>
-              Venda seus scripts.
-              <br />
-              Mostre seus mapas.
+              Seu trabalho merece vitrine.
+              <br />E público certo.
             </h2>
             <p>
               Anuncie seu trabalho para quem já procura resources de FiveM. Você
