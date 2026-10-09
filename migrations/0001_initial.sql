@@ -1,0 +1,12 @@
+CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT NOT NULL, avatar TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
+CREATE INDEX idx_sessions_expiry ON sessions(expires_at);
+CREATE TABLE resources (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL CHECK(category IN ('script','map')), framework TEXT NOT NULL, version TEXT NOT NULL, exclusive INTEGER NOT NULL DEFAULT 0, published INTEGER NOT NULL DEFAULT 0, reviewed INTEGER NOT NULL DEFAULT 0, author TEXT NOT NULL, license TEXT NOT NULL, media TEXT NOT NULL DEFAULT '[]', file_key TEXT, filename TEXT, downloads INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX idx_resources_published_created ON resources(published, created_at);
+CREATE TABLE daily_usage (user_id TEXT NOT NULL REFERENCES users(id), day TEXT NOT NULL, downloads INTEGER NOT NULL DEFAULT 0, ai_messages INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id, day));
+CREATE TABLE orders (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, title TEXT NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_id TEXT UNIQUE, checkout_url TEXT, paid_at TEXT, valid_until TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX idx_orders_user_status ON orders(user_id, status, sku);
+CREATE TABLE tickets (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), subject TEXT NOT NULL, message TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', reply TEXT NOT NULL DEFAULT '', quote_amount INTEGER, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX idx_tickets_user ON tickets(user_id, created_at);
+CREATE TABLE deliveries (sku TEXT PRIMARY KEY, file_key TEXT NOT NULL, filename TEXT NOT NULL);
+CREATE TABLE rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);
