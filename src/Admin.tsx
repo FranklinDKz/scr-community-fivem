@@ -312,13 +312,21 @@ function Editor({
             onChange={(e) => void pick(e.target.files?.[0], true)}
           />
         </label>
-        <label className="check-field">
-          <input
-            type="checkbox"
-            checked={draft.exclusive}
-            onChange={(e) => set("exclusive", e.target.checked)}
-          />
-          <span>Disponível apenas no catálogo exclusivo</span>
+        <label>
+          Tipo de acesso
+          <select
+            value={draft.exclusive ? "exclusive" : "free"}
+            onChange={(e) => set("exclusive", e.target.value === "exclusive")}
+          >
+            <option value="free">Gratuito · limite diário da plataforma</option>
+            <option value="exclusive">
+              Exclusivo · acesso permanente de R$ 19,99
+            </option>
+          </select>
+          <small>
+            Gratuito aparece para todos. Exclusivo exige que o usuário tenha o
+            desbloqueio do catálogo.
+          </small>
         </label>
         <label className="check-field">
           <input
@@ -547,8 +555,13 @@ export default function Admin() {
     );
   if (!preview && !me.user?.admin)
     return (
-      <div className="container page">
+      <div className="container page account-gate">
+        <LockKeyhole size={42} />
         <h1>Acesso reservado à equipe.</h1>
+        <p>
+          A conta precisa estar autorizada como administradora. O dono do
+          servidor recebe esse acesso ao entrar pelo Discord oficial.
+        </p>
         <Link className="button" to="/">
           Voltar ao site
         </Link>
@@ -572,6 +585,40 @@ export default function Admin() {
           apenas as contas autorizadas da equipe acessam esta área.
         </div>
       )}
+      <section className="admin-publish-guide">
+        <div>
+          <span className="eyebrow">Publicação do proprietário</span>
+          <h2>Do arquivo ao catálogo.</h2>
+          <p>
+            Você controla cada lançamento: salva como rascunho, revisa e só
+            então publica para todos ou para o catálogo exclusivo.
+          </p>
+        </div>
+        <ol>
+          <li>
+            <strong>01</strong>
+            <span>Crie o resource</span>
+            <small>Escolha script ou mapa e informe framework e versão.</small>
+          </li>
+          <li>
+            <strong>02</strong>
+            <span>Monte a página</span>
+            <small>
+              Adicione descrição, até 12 fotos ou vídeos e legendas.
+            </small>
+          </li>
+          <li>
+            <strong>03</strong>
+            <span>Defina o acesso</span>
+            <small>Selecione Gratuito ou Exclusivo antes de publicar.</small>
+          </li>
+          <li>
+            <strong>04</strong>
+            <span>Envie e revise</span>
+            <small>Anexe o ZIP, confirme licença e revisão e publique.</small>
+          </li>
+        </ol>
+      </section>
       <div className="admin-stats">
         <div>
           <Package />
@@ -582,9 +629,24 @@ export default function Admin() {
         <div>
           <ShieldCheck />
           <span>
-            Publicados
+            Gratuitos publicados
             <strong>
-              {resources.filter((r) => r.published && !r.demo).length}
+              {
+                resources.filter((r) => r.published && !r.demo && !r.exclusive)
+                  .length
+              }
+            </strong>
+          </span>
+        </div>
+        <div>
+          <LockKeyhole />
+          <span>
+            Exclusivos publicados
+            <strong>
+              {
+                resources.filter((r) => r.published && !r.demo && r.exclusive)
+                  .length
+              }
             </strong>
           </span>
         </div>
