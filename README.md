@@ -51,7 +51,8 @@ $env:VITE_STATIC_PREVIEW='true'; npm run dev
 Variáveis públicas ficam em `wrangler.jsonc`. Segredos devem ser cadastrados com `wrangler secret put`:
 
 - `PASSWORD_PEPPER`: valor aleatório longo para proteger senhas;
-- `DISCORD_CLIENT_ID` e `DISCORD_CLIENT_SECRET`: login pelo Discord;
+- `DISCORD_CLIENT_ID` e `DISCORD_CLIENT_SECRET`: login e vínculo de conta pelo Discord;
+- `DISCORD_BOT_TOKEN`: entrega automática do cargo configurado em cada produto. O bot precisa de **Gerenciar cargos** e deve ficar acima dos cargos de cliente;
 - `ADMIN_DISCORD_IDS`: opção de emergência para IDs administrativos;
 - `MERCADOPAGO_*`: fallback opcional, pois o checkout principal usa InfinitePay.
 

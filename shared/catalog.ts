@@ -5,6 +5,25 @@ export const discordChannel = (channelId?: string) =>
     ? `https://discord.com/channels/${DISCORD_GUILD_ID}/${channelId}`
     : DISCORD;
 export type Media = { url: string; type: "image" | "video"; caption: string };
+export type Product = {
+  id: string;
+  title: string;
+  subtitle: string;
+  price: number;
+  category: "base" | "script" | "service";
+  image: string;
+  label: string;
+  docs: string;
+  video: string;
+  features: string[];
+  description: string;
+  gallery: Media[];
+  discordRoleId: string;
+  deliveryUrl: string;
+  licenseTicketUrl: string;
+  published: boolean;
+  sortOrder: number;
+};
 export type Resource = {
   id: string;
   title: string;
@@ -24,16 +43,17 @@ export type Resource = {
   createdAt: string;
   demo?: boolean;
 };
-export const products = [
+export const products: Product[] = [
   {
     id: "creative-v6",
     title: "Creative V6",
     subtitle: "Uma cidade pronta para a sua história.",
     price: 39990,
     category: "base",
-    image: "creative-reference.png",
+    image: "assets/creative-reference.png",
     label: "Multi-framework",
     docs: "https://scr-community-1.gitbook.io/creative-v6-multi-framework",
+    video: "https://www.youtube.com/watch?v=y3J5HJMhcTg",
     features: [
       "Núcleo no padrão Creative Network",
       "Creative V5, vRP e vRPex",
@@ -44,6 +64,12 @@ export const products = [
     ],
     description:
       "A base que reúne os sistemas essenciais para tirar sua cidade do papel. Baús, crafting, blips, fardas, veículos e locais configurados, com orientação da equipe ScR.",
+    gallery: [],
+    discordRoleId: "1191845850436083722",
+    deliveryUrl: "https://dk-license-api.onrender.com/download/instalador",
+    licenseTicketUrl: DISCORD,
+    published: true,
+    sortOrder: 10,
   },
   {
     id: "standalone",
@@ -51,10 +77,10 @@ export const products = [
     subtitle: "Sua cidade. Suas regras. Seu controle.",
     price: 79990,
     category: "base",
-    image: "standalone-reference.png",
+    image: "assets/standalone-reference.png",
     label: "Configuração in-game",
     docs: "https://scr-community.gitbook.io/base-standalone",
-    video: "https://www.youtube.com/embed/vs1_ygaER6M",
+    video: "https://www.youtube.com/watch?v=vs1_ygaER6M",
     features: [
       "Gerenciamento de sistemas dentro do jogo",
       "Baús, crafting, rotas e grupos",
@@ -65,8 +91,14 @@ export const products = [
     ],
     description:
       "Mais autonomia para personalizar sua cidade. Ajuste sistemas, grupos e identidade visual dentro do jogo. Consulte a documentação para confirmar a compatibilidade dos seus scripts.",
+    gallery: [],
+    discordRoleId: "1524550741312929812",
+    deliveryUrl: "https://dk-license-api.onrender.com/download/instalador",
+    licenseTicketUrl: DISCORD,
+    published: true,
+    sortOrder: 20,
   },
-] as const;
+];
 export const offers = {
   unlimited: { title: "Downloads ilimitados", price: 599, days: 30 },
   exclusive: { title: "Acesso aos exclusivos", price: 1999, days: null },

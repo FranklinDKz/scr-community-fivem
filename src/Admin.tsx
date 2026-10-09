@@ -15,11 +15,14 @@ import {
   LayoutGrid,
   LockKeyhole,
   Eye,
+  ShoppingBag,
 } from "lucide-react";
 import {
   type Resource,
   type Media,
-  products,
+  type Product,
+  products as defaultProducts,
+  DISCORD,
   money,
   previewResources,
 } from "../shared/catalog";
@@ -50,6 +53,354 @@ async function upload(file: File) {
     filename: string;
     type: "image" | "video";
   }>("/admin/upload", { method: "POST", body: data });
+}
+const blankProduct = (): Product => ({
+  id: "",
+  title: "",
+  subtitle: "",
+  price: 100,
+  category: "base",
+  image: "",
+  label: "Multi-framework",
+  docs: "",
+  video: "",
+  features: [],
+  description: "",
+  gallery: [],
+  discordRoleId: "",
+  deliveryUrl: "https://dk-license-api.onrender.com/download/instalador",
+  licenseTicketUrl: DISCORD,
+  published: false,
+  sortOrder: 100,
+});
+
+function ProductEditor({
+  product,
+  onClose,
+  onSaved,
+}: {
+  product: Product | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { toast } = useApp();
+  const [draft, setDraft] = useState<Product>(product || blankProduct());
+  const [features, setFeatures] = useState(
+    (product?.features || []).join("\n"),
+  );
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const set = <K extends keyof Product>(key: K, value: Product[K]) =>
+    setDraft((current) => ({ ...current, [key]: value }));
+  async function uploadImage(file: File | undefined, cover = false) {
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const result = await upload(file);
+      if (!result.url) throw new Error("Selecione uma imagem.");
+      if (cover) set("image", result.url);
+      else
+        set("gallery", [
+          ...draft.gallery,
+          { url: result.url, type: result.type, caption: file.name },
+        ]);
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const payload = {
+        ...draft,
+        features: features
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      };
+      await api("/admin/products" + (product ? "/" + product.id : ""), {
+        method: product ? "PUT" : "POST",
+        body: JSON.stringify(payload),
+      });
+      toast(product ? "Produto atualizado." : "Produto criado.");
+      onSaved();
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal
+      title={product ? `Editar ${product.title}` : "Novo produto"}
+      onClose={onClose}
+    >
+      <form className="form resource-editor" onSubmit={save}>
+        <div className="form-row">
+          <label>
+            Identificador
+            <input
+              required
+              pattern="[a-z0-9][a-z0-9-]{1,79}"
+              value={draft.id}
+              disabled={!!product}
+              onChange={(event) => set("id", event.target.value.toLowerCase())}
+              placeholder="nome-do-produto"
+            />
+          </label>
+          <label>
+            Categoria
+            <select
+              value={draft.category}
+              onChange={(event) =>
+                set("category", event.target.value as Product["category"])
+              }
+            >
+              <option value="base">Base</option>
+              <option value="script">Script</option>
+              <option value="service">Serviço</option>
+            </select>
+          </label>
+          <label>
+            Ordem
+            <input
+              type="number"
+              min="0"
+              max="10000"
+              value={draft.sortOrder}
+              onChange={(event) => set("sortOrder", Number(event.target.value))}
+            />
+          </label>
+        </div>
+        <label>
+          Nome do produto
+          <input
+            required
+            minLength={2}
+            maxLength={100}
+            value={draft.title}
+            onChange={(event) => set("title", event.target.value)}
+          />
+        </label>
+        <label>
+          Frase de apresentação
+          <input
+            required
+            minLength={3}
+            maxLength={180}
+            value={draft.subtitle}
+            onChange={(event) => set("subtitle", event.target.value)}
+          />
+        </label>
+        <div className="form-row">
+          <label>
+            Valor em R$
+            <input
+              required
+              type="number"
+              min="1"
+              max="100000"
+              step="0.01"
+              value={(draft.price / 100).toFixed(2)}
+              onChange={(event) =>
+                set("price", Math.round(Number(event.target.value) * 100))
+              }
+            />
+          </label>
+          <label>
+            Selo / compatibilidade
+            <input
+              required
+              minLength={2}
+              maxLength={80}
+              value={draft.label}
+              onChange={(event) => set("label", event.target.value)}
+            />
+          </label>
+        </div>
+        <label>
+          Descrição completa
+          <textarea
+            required
+            minLength={20}
+            maxLength={12000}
+            rows={6}
+            value={draft.description}
+            onChange={(event) => set("description", event.target.value)}
+          />
+        </label>
+        <label>
+          Benefícios — um por linha
+          <textarea
+            rows={7}
+            value={features}
+            onChange={(event) => setFeatures(event.target.value)}
+            placeholder={"Instalador ScR\nSuporte permanente\nMulti-framework"}
+          />
+        </label>
+        <fieldset>
+          <legend>Imagem principal e galeria</legend>
+          {draft.image && (
+            <img
+              className="admin-product-cover"
+              src={
+                draft.image.startsWith("assets/")
+                  ? asset(draft.image)
+                  : draft.image
+              }
+              alt="Prévia da capa"
+            />
+          )}
+          <label className="upload-box">
+            <ImagePlus size={20} />
+            <span>
+              Enviar imagem principal<small>JPG, PNG ou WebP · até 25 MB</small>
+            </span>
+            <input
+              aria-label="Imagem principal do produto"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={uploading || preview}
+              onChange={(event) =>
+                void uploadImage(event.target.files?.[0], true)
+              }
+            />
+          </label>
+          <label>
+            Ou URL da imagem principal
+            <input
+              value={draft.image}
+              onChange={(event) => set("image", event.target.value)}
+              placeholder="https://..."
+            />
+          </label>
+          <div className="admin-media">
+            {draft.gallery.map((media, index) => (
+              <div key={`${media.url}-${index}`}>
+                {media.type === "image" ? (
+                  <img src={media.url} alt={media.caption} />
+                ) : (
+                  <span>Vídeo</span>
+                )}
+                <small>{media.caption || "Sem legenda"}</small>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={`Remover mídia ${index + 1}`}
+                  onClick={() =>
+                    set(
+                      "gallery",
+                      draft.gallery.filter((_, item) => item !== index),
+                    )
+                  }
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="upload-box">
+            <ImagePlus size={20} />
+            <span>
+              Adicionar à galeria<small>Até 12 imagens ou vídeos</small>
+            </span>
+            <input
+              aria-label="Adicionar mídia do produto"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,video/mp4"
+              disabled={uploading || preview || draft.gallery.length >= 12}
+              onChange={(event) => void uploadImage(event.target.files?.[0])}
+            />
+          </label>
+        </fieldset>
+        <div className="form-row">
+          <label>
+            Vídeo do YouTube
+            <input
+              type="url"
+              value={draft.video}
+              onChange={(event) => set("video", event.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+          </label>
+          <label>
+            Documentação / GitBook
+            <input
+              type="url"
+              value={draft.docs}
+              onChange={(event) => set("docs", event.target.value)}
+              placeholder="https://..."
+            />
+          </label>
+        </div>
+        <label>
+          Link de entrega do instalador
+          <input
+            required
+            type="url"
+            value={draft.deliveryUrl}
+            onChange={(event) => set("deliveryUrl", event.target.value)}
+          />
+          <small>Aparece somente para uma compra aprovada.</small>
+        </label>
+        <div className="form-row">
+          <label>
+            ID do cargo no Discord
+            <input
+              inputMode="numeric"
+              pattern="[0-9]{17,20}"
+              value={draft.discordRoleId}
+              onChange={(event) =>
+                set("discordRoleId", event.target.value.trim())
+              }
+              placeholder="1191845850436083722"
+            />
+          </label>
+          <label>
+            Link para liberar licença / ticket
+            <input
+              required
+              type="url"
+              value={draft.licenseTicketUrl}
+              onChange={(event) => set("licenseTicketUrl", event.target.value)}
+            />
+          </label>
+        </div>
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={draft.published}
+            onChange={(event) => set("published", event.target.checked)}
+          />
+          <span>Produto publicado e disponível para compra</span>
+        </label>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="modal-actions">
+          <Button type="button" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button className="primary" disabled={busy || uploading || preview}>
+            {busy ? (
+              <LoaderCircle className="spin" size={16} />
+            ) : (
+              <Upload size={16} />
+            )}{" "}
+            Salvar produto
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
 function Editor({
   resource,
@@ -456,10 +807,15 @@ function TicketEditor({
 }
 export default function Admin() {
   const { me, login, toast, reload } = useApp();
-  const [tab, setTab] = useState("resources"),
+  const [tab, setTab] = useState("products"),
+    [catalogProducts, setCatalogProducts] = useState<Product[]>([]),
     [resources, setResources] = useState<Resource[]>([]),
     [tickets, setTickets] = useState<any[]>([]),
-    [deliveries, setDeliveries] = useState<any[]>([]),
+    [integrations, setIntegrations] = useState({
+      discord: false,
+      discordRoles: false,
+      payments: false,
+    }),
     [analytics, setAnalytics] = useState<any>({
       summary: { views: 0, visitors: 0, users: 0, active_users: 0 },
       daily: [],
@@ -468,6 +824,9 @@ export default function Admin() {
       recent: [],
     }),
     [editor, setEditor] = useState<Resource | null | undefined>(undefined),
+    [productEditor, setProductEditor] = useState<Product | null | undefined>(
+      undefined,
+    ),
     [ticket, setTicket] = useState<any>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -477,6 +836,7 @@ export default function Admin() {
     try {
       if (preview) {
         setResources(previewResources);
+        setCatalogProducts(defaultProducts);
         setAnalytics({
           summary: {
             views: 2847,
@@ -503,16 +863,18 @@ export default function Admin() {
         });
         return;
       }
-      const [r, t, d, a] = await Promise.all([
+      const [r, t, p, a, i] = await Promise.all([
         api("/admin/resources"),
         api("/admin/tickets"),
-        api("/admin/deliveries"),
+        api("/admin/products"),
         api("/admin/analytics"),
+        api("/config"),
       ]);
       setResources(r);
       setTickets(t);
-      setDeliveries(d);
+      setCatalogProducts(p);
       setAnalytics(a);
+      setIntegrations(i);
       setError("");
     } catch (e) {
       setError((e as Error).message);
@@ -523,27 +885,6 @@ export default function Admin() {
   useEffect(() => {
     if (me.user?.admin || preview) void load();
   }, [me.user?.id]);
-  async function saveDelivery(sku: string, file?: File) {
-    if (!file) return;
-    setBusy(true);
-    try {
-      const result = await upload(file);
-      await api("/admin/deliveries", {
-        method: "POST",
-        body: JSON.stringify({
-          sku,
-          fileKey: result.key,
-          filename: result.filename,
-        }),
-      });
-      toast("Arquivo de entrega atualizado.");
-      await load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   if (!preview && !me.user)
     return (
       <div className="container page account-gate">
@@ -575,14 +916,29 @@ export default function Admin() {
           <h1>Sua comunidade, organizada.</h1>
           <p>Publique resources e cuide de cada entrega.</p>
         </div>
-        <Button className="primary" onClick={() => setEditor(null)}>
-          <Plus size={18} /> Novo resource
-        </Button>
+        <div className="inline-actions">
+          <Button onClick={() => setProductEditor(null)}>
+            <ShoppingBag size={18} /> Novo produto
+          </Button>
+          <Button className="primary" onClick={() => setEditor(null)}>
+            <Plus size={18} /> Novo resource
+          </Button>
+        </div>
       </div>
       {preview && (
         <div className="notice">
           <Eye size={18} /> Prévia do painel administrativo. Na versão completa,
           apenas as contas autorizadas da equipe acessam esta área.
+        </div>
+      )}
+      {!preview && (!integrations.discord || !integrations.discordRoles) && (
+        <div className="notice admin-integration-warning">
+          <MessageSquare size={18} />
+          <span>
+            <strong>Integração do Discord aguardando credenciais.</strong>
+            Configure o OAuth para vincular contas e o token do bot para aplicar
+            automaticamente os cargos dos produtos.
+          </span>
         </div>
       )}
       <section className="admin-publish-guide">
@@ -621,9 +977,9 @@ export default function Admin() {
       </section>
       <div className="admin-stats">
         <div>
-          <Package />
+          <ShoppingBag />
           <span>
-            Resources<strong>{resources.length}</strong>
+            Produtos<strong>{catalogProducts.length}</strong>
           </span>
         </div>
         <div>
@@ -660,9 +1016,9 @@ export default function Admin() {
       </div>
       <div className="tabs admin-tabs">
         {[
+          ["products", "Produtos & entregas", ShoppingBag],
           ["resources", "Resources", LayoutGrid],
           ["tickets", "Chamados", MessageSquare],
-          ["deliveries", "Entregas das bases", Package],
           ["analytics", "Acessos & usuários", Eye],
         ].map(([id, label, Icon]: any) => (
           <button
@@ -685,6 +1041,87 @@ export default function Admin() {
           <LoaderCircle className="spin" /> Carregando...
         </div>
       )}
+      {tab === "products" &&
+        (catalogProducts.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Valor</th>
+                  <th>Entrega</th>
+                  <th>Cargo Discord</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalogProducts.map((product) => (
+                  <tr key={product.id}>
+                    <td>
+                      <strong>{product.title}</strong>
+                      <small>
+                        {product.label} · {product.id}
+                      </small>
+                    </td>
+                    <td>{money(product.price)}</td>
+                    <td>
+                      {product.deliveryUrl
+                        ? "Instalador configurado"
+                        : "Pendente"}
+                    </td>
+                    <td>
+                      <code>{product.discordRoleId || "—"}</code>
+                    </td>
+                    <td>
+                      <span className="status">
+                        {product.published ? "Publicado" : "Oculto"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="inline-actions">
+                        <Button
+                          aria-label={`Editar ${product.title}`}
+                          onClick={() => setProductEditor(product)}
+                        >
+                          <Pencil size={16} />
+                        </Button>
+                        <Button
+                          aria-label={`Excluir ${product.title}`}
+                          disabled={preview}
+                          onClick={async () => {
+                            if (
+                              !window.confirm(
+                                `Excluir ${product.title} da loja?`,
+                              )
+                            )
+                              return;
+                            try {
+                              await api(`/admin/products/${product.id}`, {
+                                method: "DELETE",
+                              });
+                              toast("Produto removido.");
+                              await load();
+                              await reload();
+                            } catch (failure) {
+                              setError((failure as Error).message);
+                            }
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty title="Cadastre o primeiro produto">
+            Defina preço, imagens, entrega e cargo do Discord.
+          </Empty>
+        ))}
       {tab === "resources" &&
         (resources.length ? (
           <div className="table-wrap">
@@ -767,37 +1204,6 @@ export default function Admin() {
             Pedidos de orçamento e de suporte aparecerão nesta área.
           </Empty>
         ))}
-      {tab === "deliveries" && (
-        <div className="services-grid">
-          {products.map((p) => (
-            <article className="service-card" key={p.id}>
-              <FileArchive size={28} />
-              <h3>{p.title}</h3>
-              <p>
-                {deliveries.find((d) => d.sku === p.id)?.filename ||
-                  "Nenhum arquivo de entrega cadastrado. A compra online fica indisponível até o envio."}
-              </p>
-              <label className="upload-box">
-                <Upload size={18} />
-                <span>
-                  Enviar ZIP da base
-                  <small>
-                    Até 50 MB. Para bases maiores, consulte o guia de
-                    publicação.
-                  </small>
-                </span>
-                <input
-                  aria-label={"Entrega " + p.title}
-                  type="file"
-                  accept=".zip"
-                  disabled={preview || busy}
-                  onChange={(e) => void saveDelivery(p.id, e.target.files?.[0])}
-                />
-              </label>
-            </article>
-          ))}
-        </div>
-      )}
       {tab === "analytics" && (
         <div className="analytics-panel">
           <div className="analytics-summary">
@@ -904,6 +1310,17 @@ export default function Admin() {
           onClose={() => setEditor(undefined)}
           onSaved={() => {
             setEditor(undefined);
+            void load();
+            void reload();
+          }}
+        />
+      )}
+      {productEditor !== undefined && (
+        <ProductEditor
+          product={productEditor}
+          onClose={() => setProductEditor(undefined)}
+          onSaved={() => {
+            setProductEditor(undefined);
             void load();
             void reload();
           }}

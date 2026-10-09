@@ -34,7 +34,6 @@ import {
   LogOut,
 } from "lucide-react";
 import {
-  products,
   services,
   scrScripts,
   partners,
@@ -43,6 +42,7 @@ import {
   money,
   type Resource,
   type Media,
+  type Product,
 } from "../shared/catalog";
 import { api, asset, preview, ApiError, downloadFile } from "./api";
 import { Button, DiscordLink, Empty, Modal, useApp } from "./App";
@@ -220,6 +220,7 @@ function CatalogContent({ limit }: { limit?: number }) {
   );
 }
 export function Home() {
+  const { products } = useApp();
   return (
     <>
       <section className="hero">
@@ -390,9 +391,11 @@ export function Home() {
           </p>
         </div>
         <div className="product-grid">
-          {products.map((p, i) => (
-            <ProductCard key={p.id} product={p} index={i} />
-          ))}
+          {products
+            .filter((p) => p.category === "base")
+            .map((p, i) => (
+              <ProductCard key={p.id} product={p} index={i} />
+            ))}
         </div>
       </section>
       <section className="container support-teaser">
@@ -470,32 +473,29 @@ function ProductCard({
   product: p,
   index = 0,
 }: {
-  product: (typeof products)[number];
+  product: Product;
   index?: number;
 }) {
   return (
     <Link className={"product-card product-" + index} to={"/loja/" + p.id}>
       <div
         className="product-visual"
-        style={{ backgroundImage: `url(${asset("assets/banner.png")})` }}
+        style={{
+          backgroundImage: `url(${source(p.image || "assets/banner.png")})`,
+        }}
       >
         <div className="product-caption">
           <span>ScR Originals</span>
-          <strong>
-            {p.title === "Creative V6" ? (
-              <>
-                CREATIVE <em>V6</em>
-              </>
-            ) : (
-              <>STANDALONE</>
-            )}
-          </strong>
+          <strong>{p.title.toUpperCase()}</strong>
           <small>{p.label}</small>
         </div>
       </div>
       <div className="product-info">
         <div>
-          <h3>Base {p.title}</h3>
+          <h3>
+            {p.category === "base" ? "Base " : ""}
+            {p.title}
+          </h3>
           <p>{p.subtitle}</p>
         </div>
         <div>
@@ -753,7 +753,7 @@ export function Store() {
   const [filter, setFilter] = useState(
     tabs.includes(requestedTab) ? requestedTab : "bases",
   );
-  const { buy } = useApp();
+  const { buy, products } = useApp();
   const icons: Record<string, typeof Code2> = {
     city: Building2,
     code: Code2,
@@ -811,9 +811,11 @@ export function Store() {
       {filter === "bases" && (
         <>
           <div className="product-grid">
-            {products.map((p, i) => (
-              <ProductCard key={p.id} product={p} index={i} />
-            ))}
+            {products
+              .filter((p) => p.category === "base")
+              .map((p, i) => (
+                <ProductCard key={p.id} product={p} index={i} />
+              ))}
           </div>
           <div className="store-assurance">
             <span>
@@ -829,25 +831,40 @@ export function Store() {
         </>
       )}
       {filter === "scripts" && (
-        <div className="services-grid">
-          {scrScripts.map((script, index) => (
-            <article className="service-card" key={script.title}>
-              <div className="service-icon">
-                {index === 0 ? <ShieldCheck /> : <Code2 />}
-              </div>
-              <span className="sale-label">À venda pela ScR</span>
-              <h3>{script.title}</h3>
-              <p>{script.description}</p>
-              <a
-                className="button"
-                href={DISCORD}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Comprar no Discord <MessageCircle size={16} />
-              </a>
-            </article>
-          ))}
+        <div className="store-managed-section">
+          {products.some((product) => product.category === "script") && (
+            <div className="product-grid">
+              {products
+                .filter((product) => product.category === "script")
+                .map((product, index) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    index={index}
+                  />
+                ))}
+            </div>
+          )}
+          <div className="services-grid">
+            {scrScripts.map((script, index) => (
+              <article className="service-card" key={script.title}>
+                <div className="service-icon">
+                  {index === 0 ? <ShieldCheck /> : <Code2 />}
+                </div>
+                <span className="sale-label">À venda pela ScR</span>
+                <h3>{script.title}</h3>
+                <p>{script.description}</p>
+                <a
+                  className="button"
+                  href={DISCORD}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Comprar no Discord <MessageCircle size={16} />
+                </a>
+              </article>
+            ))}
+          </div>
         </div>
       )}
       {filter === "servicos" && (
@@ -999,8 +1016,8 @@ export function Store() {
 }
 export function ProductPage() {
   const { id } = useParams();
+  const { buy, products } = useApp();
   const p = products.find((p) => p.id === id);
-  const { buy } = useApp();
   const [reference, setReference] = useState(false);
   if (!p) return <NotFound />;
   return (
@@ -1012,7 +1029,9 @@ export function ProductPage() {
         <div>
           <div
             className="product-visual large"
-            style={{ backgroundImage: `url(${asset("assets/banner.png")})` }}
+            style={{
+              backgroundImage: `url(${source(p.image || "assets/banner.png")})`,
+            }}
           >
             <div className="product-caption">
               <span>ScR Originals</span>
@@ -1021,14 +1040,16 @@ export function ProductPage() {
             </div>
           </div>
           <div className="reference-actions">
-            <a
-              className="button"
-              href={p.docs}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <BookOpen size={17} /> Documentação
-            </a>
+            {p.docs && (
+              <a
+                className="button"
+                href={p.docs}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <BookOpen size={17} /> Documentação
+              </a>
+            )}
             <Button onClick={() => setReference(true)}>
               Ver apresentação original
             </Button>
@@ -1044,14 +1065,19 @@ export function ProductPage() {
                 </li>
               ))}
             </ul>
-            {"video" in p && (
+            {(p.video || p.gallery.length > 0) && (
               <Gallery
                 media={[
-                  {
-                    url: p.video,
-                    type: "video",
-                    caption: "Demonstração da Base Standalone, por DK RP.",
-                  },
+                  ...(p.video
+                    ? [
+                        {
+                          url: p.video,
+                          type: "video" as const,
+                          caption: `Demonstração de ${p.title}, por DK RP.`,
+                        },
+                      ]
+                    : []),
+                  ...p.gallery,
                 ]}
               />
             )}
@@ -1090,7 +1116,7 @@ export function ProductPage() {
         >
           <img
             className="reference-image"
-            src={asset("assets/" + p.image)}
+            src={source(p.image || "assets/banner.png")}
             alt={"Apresentação de venda original da Base " + p.title}
           />
         </Modal>
@@ -1592,6 +1618,18 @@ export function Account() {
           confirmação do pagamento. Atualize esta página em alguns instantes.
         </div>
       )}
+      {!me.user.discordLinked && (
+        <div className="notice account-discord-link">
+          <MessageCircle size={19} />
+          <span>
+            <strong>Vincule seu Discord para receber cargos de cliente.</strong>
+            Depois da aprovação, o site aplica o cargo correspondente à base.
+          </span>
+          <a className="button primary" href="/api/auth/discord?link=1">
+            Vincular Discord
+          </a>
+        </div>
+      )}
       <div className="account-access">
         <div>
           <h3>Seus acessos</h3>
@@ -1740,22 +1778,61 @@ export function Account() {
                     </span>
                   </td>
                   <td>
-                    {o.status === "approved" &&
-                    ["creative-v6", "standalone"].includes(o.sku) ? (
-                      <Button
-                        onClick={async () => {
-                          try {
-                            await downloadFile(
-                              "/orders/" + o.id + "/download",
-                              o.sku + ".zip",
-                            );
-                          } catch (e) {
-                            toast((e as Error).message);
-                          }
-                        }}
-                      >
-                        Baixar base
-                      </Button>
+                    {o.status === "approved" && o.delivery_url ? (
+                      <div className="purchase-actions">
+                        <a
+                          className="button"
+                          href={`/api/orders/${o.id}/installer`}
+                        >
+                          <Download size={16} /> Baixar instalador
+                        </a>
+                        {o.license_ticket_url && (
+                          <a
+                            className="button"
+                            href={o.license_ticket_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <MessageCircle size={16} /> Liberar licença
+                          </a>
+                        )}
+                        {o.discord_role_status !== "granted" && (
+                          <Button
+                            onClick={async () => {
+                              try {
+                                const result = await api<{
+                                  status: string;
+                                  error?: string;
+                                }>(`/orders/${o.id}/discord-role`, {
+                                  method: "POST",
+                                });
+                                toast(
+                                  result.status === "granted"
+                                    ? "Cargo de cliente aplicado no Discord."
+                                    : result.error ||
+                                        "Vincule o Discord e entre no servidor para ativar o cargo.",
+                                );
+                                await load();
+                              } catch (failure) {
+                                toast((failure as Error).message);
+                              }
+                            }}
+                          >
+                            <ShieldCheck size={16} />{" "}
+                            {o.discord_role_status === "granted"
+                              ? "Cargo ativo"
+                              : "Ativar cargo"}
+                          </Button>
+                        )}
+                        {o.discord_role_status === "granted" && (
+                          <small className="role-success">
+                            <Check size={14} /> Cargo de cliente ativo
+                          </small>
+                        )}
+                        {o.discord_role_error && (
+                          <small>{o.discord_role_error}</small>
+                        )}
+                      </div>
                     ) : o.status === "approved" ? (
                       "Acesso liberado"
                     ) : (

@@ -24,7 +24,9 @@ import {
   DISCORD,
   money,
   offers,
+  products as defaultProducts,
   type OfferId,
+  type Product,
   type Resource,
 } from "../shared/catalog";
 import {
@@ -46,6 +48,7 @@ export type Me = {
     avatar: string | null;
     email: string | null;
     admin: boolean;
+    discordLinked: boolean;
   } | null;
   usage: { downloads: number; remaining: number } | null;
   access: { sku: string; valid_until: string | null }[];
@@ -54,6 +57,7 @@ type Context = {
   me: Me;
   refresh: () => Promise<void>;
   resources: Resource[];
+  products: Product[];
   loading: boolean;
   loadError: string;
   reload: () => Promise<void>;
@@ -324,6 +328,7 @@ function Checkout({
 export default function App() {
   const [me, setMe] = useState<Me>({ user: null, usage: null, access: [] }),
     [resources, setResources] = useState<Resource[]>([]),
+    [products, setProducts] = useState<Product[]>(defaultProducts),
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(""),
     [notification, setNotification] = useState(""),
@@ -366,7 +371,14 @@ export default function App() {
     setLoading(true);
     setLoadError("");
     try {
-      setResources(await api("/resources"));
+      const [nextResources, nextProducts] = await Promise.all([
+        api<Resource[]>("/resources"),
+        preview
+          ? Promise.resolve(defaultProducts)
+          : api<Product[]>("/products"),
+      ]);
+      setResources(nextResources);
+      setProducts(nextProducts);
     } catch {
       setLoadError("Não foi possível carregar o catálogo. Tente novamente.");
     } finally {
@@ -430,11 +442,12 @@ export default function App() {
   }, [location.pathname, preferences.consent]);
   const buy = (sku: string, title?: string, amount?: number) => {
     const item = offers[sku as OfferId];
-    if (item || title)
+    const product = products.find((candidate) => candidate.id === sku);
+    if (item || product || title)
       setCheckout({
         sku,
-        title: title || item.title,
-        price: amount ?? item.price,
+        title: title || item?.title || product!.title,
+        price: amount ?? item?.price ?? product!.price,
       });
   };
   const login = () => {
@@ -446,6 +459,7 @@ export default function App() {
         me,
         refresh,
         resources,
+        products,
         loading,
         loadError,
         reload,

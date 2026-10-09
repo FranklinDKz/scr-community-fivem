@@ -2,6 +2,8 @@ import { offers, type OfferId } from "../shared/catalog";
 import {
   dayInBrazil,
   hashPassword,
+  productFromRow,
+  productSchema,
   randomSalt,
   resourceFromRow,
   resourceSchema,
@@ -24,6 +26,8 @@ interface Env {
   INFINITEPAY_HANDLE?: string;
   DISCORD_CLIENT_ID?: string;
   DISCORD_CLIENT_SECRET?: string;
+  DISCORD_BOT_TOKEN?: string;
+  DISCORD_GUILD_ID?: string;
   MERCADOPAGO_ACCESS_TOKEN?: string;
   MERCADOPAGO_WEBHOOK_SECRET?: string;
   MERCADOPAGO_COLLECTOR_ID?: string;
@@ -35,6 +39,7 @@ type User = {
   avatar: string | null;
   email: string | null;
   admin: boolean;
+  discordLinked: boolean;
 };
 class HttpError extends Error {
   constructor(
@@ -89,7 +94,7 @@ async function session(req: Request, env: Env): Promise<User | null> {
   const value = cookie(req, "scr_session");
   if (!value) return null;
   const row = await env.DB.prepare(
-    "SELECT u.id,u.name,u.avatar,u.email,u.is_admin FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?",
+    "SELECT u.id,u.name,u.avatar,u.email,u.is_admin,u.discord_id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?",
   )
     .bind(await sha256(value), Date.now())
     .first<{
@@ -98,10 +103,15 @@ async function session(req: Request, env: Env): Promise<User | null> {
       avatar: string | null;
       email: string | null;
       is_admin: number;
+      discord_id: string | null;
     }>();
   return row
     ? {
-        ...row,
+        id: row.id,
+        name: row.name,
+        avatar: row.avatar,
+        email: row.email,
+        discordLinked: !!row.discord_id,
         admin:
           !!row.is_admin ||
           (env.ADMIN_DISCORD_IDS || "")
@@ -152,6 +162,71 @@ async function access(env: Env, id: string) {
     .bind(id, new Date().toISOString())
     .all<{ sku: string; valid_until: string | null }>();
   return results;
+}
+async function productBySku(env: Env, sku: string) {
+  const row = await env.DB.prepare("SELECT * FROM products WHERE id=?")
+    .bind(sku)
+    .first<Record<string, unknown>>();
+  return row ? productFromRow(row) : null;
+}
+async function grantDiscordRole(env: Env, orderId: string) {
+  const order = await env.DB.prepare(
+    "SELECT o.user_id,o.sku,u.discord_id,p.discord_role_id FROM orders o JOIN users u ON u.id=o.user_id LEFT JOIN products p ON p.id=o.sku WHERE o.id=? AND o.status='approved'",
+  )
+    .bind(orderId)
+    .first<{
+      user_id: string;
+      sku: string;
+      discord_id: string | null;
+      discord_role_id: string | null;
+    }>();
+  if (!order?.discord_role_id) return { status: "not_required" };
+  if (!order.discord_id) {
+    await env.DB.prepare(
+      "UPDATE orders SET discord_role_status='waiting_link',discord_role_error=NULL WHERE id=?",
+    )
+      .bind(orderId)
+      .run();
+    return { status: "waiting_link" };
+  }
+  if (!env.DISCORD_BOT_TOKEN) {
+    await env.DB.prepare(
+      "UPDATE orders SET discord_role_status='waiting_bot',discord_role_error='Bot do Discord não configurado' WHERE id=?",
+    )
+      .bind(orderId)
+      .run();
+    return { status: "waiting_bot" };
+  }
+  const guildId = env.DISCORD_GUILD_ID || "1177621426321244250";
+  const response = await fetch(
+    `https://discord.com/api/v10/guilds/${guildId}/members/${order.discord_id}/roles/${order.discord_role_id}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
+        "Content-Length": "0",
+      },
+      signal: AbortSignal.timeout(10000),
+    },
+  );
+  if (response.ok) {
+    await env.DB.prepare(
+      "UPDATE orders SET discord_role_status='granted',discord_role_error=NULL WHERE id=?",
+    )
+      .bind(orderId)
+      .run();
+    return { status: "granted" };
+  }
+  const message =
+    response.status === 404
+      ? "Entre no servidor da ScR antes de ativar o cargo."
+      : "O bot não conseguiu aplicar o cargo. Abra um ticket para a equipe.";
+  await env.DB.prepare(
+    "UPDATE orders SET discord_role_status='failed',discord_role_error=? WHERE id=?",
+  )
+    .bind(message, orderId)
+    .run();
+  return { status: "failed", error: message };
 }
 async function rate(env: Env, key: string, limit: number, seconds = 60) {
   const bucket = Math.floor(Date.now() / (seconds * 1000));
@@ -261,6 +336,9 @@ async function confirmInfinitePayment(
   } catch {
     throw new HttpError(409, "Esta transação já foi utilizada.");
   }
+  await grantDiscordRole(env, order.id).catch((error) =>
+    console.error("Discord role delivery failed", order.id, error),
+  );
   return { paid: true, orderId: order.id };
 }
 async function route(req: Request, env: Env): Promise<Response> {
@@ -301,6 +379,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (p === "/api/config")
     return json({
       discord: !!(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET),
+      discordRoles: !!env.DISCORD_BOT_TOKEN,
       payments: !!(
         env.INFINITEPAY_HANDLE ||
         (env.MERCADOPAGO_ACCESS_TOKEN &&
@@ -309,6 +388,12 @@ async function route(req: Request, env: Env): Promise<Response> {
       ),
       ai: true,
     });
+  if (p === "/api/products" && method === "GET") {
+    const { results } = await env.DB.prepare(
+      "SELECT * FROM products WHERE published=1 ORDER BY sort_order,title",
+    ).all();
+    return json(results.map(productFromRow));
+  }
   if (p === "/api/auth/register" && method === "POST") {
     if (!env.PASSWORD_PEPPER)
       throw new HttpError(503, "O cadastro por e-mail ainda não foi ativado.");
@@ -407,18 +492,25 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (p === "/api/auth/discord") {
     if (!env.DISCORD_CLIENT_ID || !env.DISCORD_CLIENT_SECRET)
       return redirect(env.APP_URL + "/#/conta?notice=login-unavailable");
+    const linking = url.searchParams.get("link") === "1";
+    if (linking && !(await session(req, env)))
+      return redirect(env.APP_URL + "/#/conta?notice=login-required");
     const state = token();
     const auth = new URL("https://discord.com/oauth2/authorize");
     auth.search = new URLSearchParams({
       client_id: env.DISCORD_CLIENT_ID,
       response_type: "code",
-      scope: "identify guilds",
+      scope: "identify guilds email",
       redirect_uri: env.APP_URL + "/api/auth/callback",
       state,
     }).toString();
-    return redirect(auth.toString(), {
-      "Set-Cookie": cookieHeader(env, "scr_oauth", state, 600),
-    });
+    const headers = new Headers({ Location: auth.toString() });
+    headers.append("Set-Cookie", cookieHeader(env, "scr_oauth", state, 600));
+    headers.append(
+      "Set-Cookie",
+      cookieHeader(env, "scr_oauth_link", linking ? "1" : "", 600),
+    );
+    return new Response(null, { status: 302, headers });
   }
   if (p === "/api/auth/callback") {
     const state = url.searchParams.get("state");
@@ -456,6 +548,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       username: string;
       global_name?: string;
       avatar?: string;
+      email?: string;
     };
     const guildsResponse = await fetch(
       "https://discord.com/api/v10/users/@me/guilds",
@@ -470,8 +563,47 @@ async function route(req: Request, env: Env): Promise<Response> {
     const ownsScrCommunity = guilds.some(
       (guild) => guild.id === "1177621426321244250" && guild.owner === true,
     );
+    if (cookie(req, "scr_oauth_link") === "1") {
+      const active = await session(req, env);
+      if (!active)
+        return redirect(env.APP_URL + "/#/conta?notice=login-required");
+      const claimed = await env.DB.prepare(
+        "SELECT id FROM users WHERE discord_id=? AND id<>?",
+      )
+        .bind(u.id, active.id)
+        .first();
+      if (claimed)
+        return redirect(env.APP_URL + "/#/conta?notice=discord-in-use");
+      await env.DB.prepare(
+        "UPDATE users SET discord_id=?,avatar=COALESCE(avatar,?) WHERE id=?",
+      )
+        .bind(
+          u.id,
+          u.avatar
+            ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png`
+            : null,
+          active.id,
+        )
+        .run();
+      const pending = await env.DB.prepare(
+        "SELECT id FROM orders WHERE user_id=? AND status='approved' AND discord_role_status IN ('waiting_link','waiting_bot','failed')",
+      )
+        .bind(active.id)
+        .all<{ id: string }>();
+      for (const order of pending.results)
+        await grantDiscordRole(env, order.id).catch(() => undefined);
+      const linkHeaders = new Headers({
+        Location: env.APP_URL + "/#/conta?discord=vinculado",
+      });
+      linkHeaders.append("Set-Cookie", cookieHeader(env, "scr_oauth", "", 0));
+      linkHeaders.append(
+        "Set-Cookie",
+        cookieHeader(env, "scr_oauth_link", "", 0),
+      );
+      return new Response(null, { status: 302, headers: linkHeaders });
+    }
     await env.DB.prepare(
-      "INSERT INTO users(id,name,avatar,auth_provider,last_login_at,last_login_ip,is_admin) VALUES(?,?,?,'discord',CURRENT_TIMESTAMP,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,avatar=excluded.avatar,last_login_at=CURRENT_TIMESTAMP,last_login_ip=excluded.last_login_ip,is_admin=MAX(users.is_admin,excluded.is_admin)",
+      "INSERT INTO users(id,name,avatar,email,discord_id,auth_provider,last_login_at,last_login_ip,is_admin) VALUES(?,?,?,?,?,'discord',CURRENT_TIMESTAMP,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,avatar=excluded.avatar,email=COALESCE(users.email,excluded.email),discord_id=excluded.discord_id,last_login_at=CURRENT_TIMESTAMP,last_login_ip=excluded.last_login_ip,is_admin=MAX(users.is_admin,excluded.is_admin)",
     )
       .bind(
         u.id,
@@ -479,6 +611,8 @@ async function route(req: Request, env: Env): Promise<Response> {
         u.avatar
           ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png`
           : null,
+        u.email || null,
+        u.id,
         clientIp(req),
         +ownsScrCommunity,
       )
@@ -490,6 +624,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       cookieHeader(env, "scr_session", created.raw, created.maxAge),
     );
     headers.append("Set-Cookie", cookieHeader(env, "scr_oauth", "", 0));
+    headers.append("Set-Cookie", cookieHeader(env, "scr_oauth_link", "", 0));
     return new Response(null, { status: 302, headers });
   }
   if (p === "/api/webhooks/mercadopago" && method === "POST") {
@@ -549,6 +684,9 @@ async function route(req: Request, env: Env): Promise<Response> {
           order.id,
         )
         .run();
+      await grantDiscordRole(env, order.id).catch((error) =>
+        console.error("Discord role delivery failed", order.id, error),
+      );
     } else if (
       ["refunded", "charged_back", "cancelled"].includes(payment.status)
     )
@@ -741,9 +879,16 @@ async function route(req: Request, env: Env): Promise<Response> {
     const payload = z
       .object({ sku: z.string().max(100), acceptTerms: z.literal(true) })
       .parse(await body(req));
+    const managedProduct = await productBySku(env, payload.sku);
     let offer:
       { title: string; price: number; days: number | null } | undefined =
-      offers[payload.sku as OfferId];
+      managedProduct?.published
+        ? {
+            title: managedProduct.title,
+            price: managedProduct.price,
+            days: null,
+          }
+        : offers[payload.sku as OfferId];
     if (payload.sku.startsWith("quote:")) {
       const q = await env.DB.prepare(
         "SELECT subject,quote_amount FROM tickets WHERE id=? AND user_id=? AND quote_amount IS NOT NULL",
@@ -759,15 +904,10 @@ async function route(req: Request, env: Env): Promise<Response> {
         409,
         "Você já possui este produto. Consulte sua conta.",
       );
-    if (
-      ["creative-v6", "standalone"].includes(payload.sku) &&
-      !(await env.DB.prepare("SELECT sku FROM deliveries WHERE sku=?")
-        .bind(payload.sku)
-        .first())
-    )
+    if (managedProduct && !managedProduct.deliveryUrl)
       throw new HttpError(
         409,
-        "Esta base está disponível por atendimento. Fale com a equipe no Discord.",
+        "A entrega deste produto ainda não foi configurada. Fale com a equipe no Discord.",
       );
     const id = crypto.randomUUID();
     const provider = env.INFINITEPAY_HANDLE ? "infinitepay" : "mercadopago";
@@ -841,12 +981,35 @@ async function route(req: Request, env: Env): Promise<Response> {
     return json(
       (
         await env.DB.prepare(
-          "SELECT id,sku,title,amount,status,valid_until,created_at FROM orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100",
+          "SELECT o.id,o.sku,o.title,o.amount,o.status,o.valid_until,o.created_at,o.discord_role_status,o.discord_role_error,p.delivery_url,p.license_ticket_url FROM orders o LEFT JOIN products p ON p.id=o.sku WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100",
         )
           .bind(u.id)
           .all()
       ).results,
     );
+  }
+  const installer = p.match(/^\/api\/orders\/([^/]+)\/installer$/);
+  if (installer && method === "GET") {
+    const u = requireUser(user);
+    const row = await env.DB.prepare(
+      "SELECT p.delivery_url FROM orders o JOIN products p ON p.id=o.sku WHERE o.id=? AND o.user_id=? AND o.status='approved'",
+    )
+      .bind(installer[1], u.id)
+      .first<{ delivery_url: string }>();
+    if (!row?.delivery_url)
+      throw new HttpError(404, "Instalador não disponível.");
+    return redirect(row.delivery_url);
+  }
+  const roleDelivery = p.match(/^\/api\/orders\/([^/]+)\/discord-role$/);
+  if (roleDelivery && method === "POST") {
+    const u = requireUser(user);
+    const owned = await env.DB.prepare(
+      "SELECT id FROM orders WHERE id=? AND user_id=? AND status='approved'",
+    )
+      .bind(roleDelivery[1], u.id)
+      .first();
+    if (!owned) throw new HttpError(404, "Compra aprovada não encontrada.");
+    return json(await grantDiscordRole(env, roleDelivery[1]));
   }
   const deliver = p.match(/^\/api\/orders\/([^/]+)\/download$/);
   if (deliver && method === "POST") {
@@ -991,6 +1154,79 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if (p.startsWith("/api/admin")) {
     const admin = requireAdmin(user);
+    if (p === "/api/admin/products" && method === "GET")
+      return json(
+        (
+          await env.DB.prepare(
+            "SELECT * FROM products ORDER BY sort_order,title",
+          ).all()
+        ).results.map(productFromRow),
+      );
+    if (p === "/api/admin/products" && method === "POST") {
+      const data = productSchema.parse(await body(req));
+      await env.DB.prepare(
+        "INSERT INTO products(id,title,subtitle,price,category,image_url,label,docs_url,video_url,features,description,gallery,discord_role_id,delivery_url,license_ticket_url,published,sort_order) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      )
+        .bind(
+          data.id,
+          data.title,
+          data.subtitle,
+          data.price,
+          data.category,
+          data.image,
+          data.label,
+          data.docs,
+          data.video,
+          JSON.stringify(data.features),
+          data.description,
+          JSON.stringify(data.gallery),
+          data.discordRoleId,
+          data.deliveryUrl,
+          data.licenseTicketUrl,
+          +data.published,
+          data.sortOrder,
+        )
+        .run();
+      return json({ id: data.id }, 201);
+    }
+    const productMatch = p.match(/^\/api\/admin\/products\/([^/]+)$/);
+    if (productMatch && method === "PUT") {
+      const data = productSchema.parse(await body(req));
+      if (data.id !== productMatch[1])
+        throw new HttpError(400, "O identificador do produto não pode mudar.");
+      const result = await env.DB.prepare(
+        "UPDATE products SET title=?,subtitle=?,price=?,category=?,image_url=?,label=?,docs_url=?,video_url=?,features=?,description=?,gallery=?,discord_role_id=?,delivery_url=?,license_ticket_url=?,published=?,sort_order=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
+      )
+        .bind(
+          data.title,
+          data.subtitle,
+          data.price,
+          data.category,
+          data.image,
+          data.label,
+          data.docs,
+          data.video,
+          JSON.stringify(data.features),
+          data.description,
+          JSON.stringify(data.gallery),
+          data.discordRoleId,
+          data.deliveryUrl,
+          data.licenseTicketUrl,
+          +data.published,
+          data.sortOrder,
+          productMatch[1],
+        )
+        .run();
+      if (!result.meta.changes)
+        throw new HttpError(404, "Produto não encontrado.");
+      return json({ ok: true });
+    }
+    if (productMatch && method === "DELETE") {
+      await env.DB.prepare("DELETE FROM products WHERE id=?")
+        .bind(productMatch[1])
+        .run();
+      return json({ ok: true });
+    }
     if (p === "/api/admin/analytics" && method === "GET") {
       const [summary, daily, pages, users, recent] = await env.DB.batch([
         env.DB.prepare(

@@ -45,6 +45,76 @@ export const resourceSchema = z
     (r) => !r.published || (r.reviewed && !!r.fileKey && !!r.filename),
     "Para publicar, anexe o ZIP e confirme a revisão e a autorização de distribuição.",
   );
+
+const httpsUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (value) =>
+      !value ||
+      /^https:\/\//.test(value) ||
+      /^\/api\/media\/[a-zA-Z0-9./_-]+$/.test(value) ||
+      /^assets\/[a-zA-Z0-9./_-]+$/.test(value),
+    "Use uma URL HTTPS ou uma mídia enviada.",
+  );
+
+export const productSchema = z.object({
+  id: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9-]{1,79}$/),
+  title: z.string().trim().min(2).max(100),
+  subtitle: z.string().trim().min(3).max(180),
+  price: z.number().int().min(100).max(10000000),
+  category: z.enum(["base", "script", "service"]),
+  image: httpsUrl,
+  label: z.string().trim().min(2).max(80),
+  docs: httpsUrl,
+  video: httpsUrl,
+  features: z.array(z.string().trim().min(2).max(240)).max(30),
+  description: z.string().trim().min(20).max(12000),
+  gallery: z
+    .array(
+      z.object({
+        type: z.enum(["image", "video"]),
+        url: httpsUrl.refine((value) => !!value, "Informe a mídia."),
+        caption: z.string().trim().max(500),
+      }),
+    )
+    .max(12),
+  discordRoleId: z
+    .string()
+    .trim()
+    .regex(/^\d{17,20}$/)
+    .or(z.literal("")),
+  deliveryUrl: httpsUrl,
+  licenseTicketUrl: httpsUrl,
+  published: z.boolean(),
+  sortOrder: z.number().int().min(0).max(10000),
+});
+
+export function productFromRow(r: Record<string, unknown>) {
+  return {
+    id: String(r.id),
+    title: String(r.title),
+    subtitle: String(r.subtitle),
+    price: Number(r.price),
+    category: r.category,
+    image: String(r.image_url || ""),
+    label: String(r.label),
+    docs: String(r.docs_url || ""),
+    video: String(r.video_url || ""),
+    features: JSON.parse(String(r.features || "[]")),
+    description: String(r.description),
+    gallery: JSON.parse(String(r.gallery || "[]")),
+    discordRoleId: String(r.discord_role_id || ""),
+    deliveryUrl: String(r.delivery_url || ""),
+    licenseTicketUrl: String(r.license_ticket_url || ""),
+    published: !!r.published,
+    sortOrder: Number(r.sort_order || 0),
+  };
+}
 export async function sha256(value: string) {
   return Array.from(
     new Uint8Array(

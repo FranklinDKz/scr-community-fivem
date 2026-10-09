@@ -35,6 +35,7 @@
     "APP_URL": "https://scr-community.dk-rp.workers.dev",
     "ADMIN_DISCORD_IDS": "",
     "ADMIN_EMAILS": "",
+    "DISCORD_GUILD_ID": "1177621426321244250",
     "INFINITEPAY_HANDLE": "razielrv7",
   },
   "triggers": { "crons": ["0 6 * * *"] },
