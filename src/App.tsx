@@ -106,10 +106,12 @@ export function Modal({
   title,
   onClose,
   children,
+  closeOnBackdrop = true,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  closeOnBackdrop?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -128,7 +130,7 @@ export function Modal({
       className="modal"
       onCancel={onClose}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
     >
       <div className="modal-header">

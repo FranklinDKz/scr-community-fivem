@@ -140,6 +140,7 @@ function ProductEditor({
     <Modal
       title={product ? `Editar ${product.title}` : "Novo produto"}
       onClose={onClose}
+      closeOnBackdrop={false}
     >
       <form className="form resource-editor" onSubmit={save}>
         <div className="form-row">
@@ -469,6 +470,7 @@ function Editor({
     <Modal
       title={resource ? "Editar resource" : "Publicar um novo resource"}
       onClose={onClose}
+      closeOnBackdrop={false}
     >
       <form className="form resource-editor" onSubmit={save}>
         {preview && (
