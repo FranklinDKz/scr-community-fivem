@@ -480,18 +480,7 @@ function ProductCard({
 }) {
   return (
     <Link className={"product-card product-" + index} to={"/loja/" + p.id}>
-      <div
-        className="product-visual"
-        style={{
-          backgroundImage: `url(${source(p.image || "assets/banner.png")})`,
-        }}
-      >
-        <div className="product-caption">
-          <span>ScR Originals</span>
-          <strong>{p.title.toUpperCase()}</strong>
-          <small>{p.label}</small>
-        </div>
-      </div>
+      <ProductVisual product={p} />
       <div className="product-info">
         <div>
           <h3>
@@ -510,10 +499,36 @@ function ProductCard({
           <ShieldCheck size={15} /> Suporte permanente incluído
         </span>
         <span>
-          Conhecer a base <Plus size={15} />
+          Conhecer {p.category === "base" ? "a base" : "o produto"}{" "}
+          <Plus size={15} />
         </span>
       </div>
     </Link>
+  );
+}
+
+function ProductVisual({
+  product: p,
+  large = false,
+}: {
+  product: Product;
+  large?: boolean;
+}) {
+  const fallback = source("assets/banner.png");
+  const requested = source(p.image || "assets/banner.png");
+  const [image, setImage] = useState(requested);
+  useEffect(() => setImage(requested), [requested]);
+  return (
+    <div className={`product-visual${large ? " large" : ""}`}>
+      <img
+        className="product-visual-image"
+        src={image}
+        alt={`Capa de ${p.title}`}
+        loading={large ? "eager" : "lazy"}
+        decoding="async"
+        onError={() => image !== fallback && setImage(fallback)}
+      />
+    </div>
   );
 }
 export function Catalog() {
@@ -762,6 +777,8 @@ export function Store() {
     tabs.includes(requestedTab) ? requestedTab : "bases",
   );
   const { buy, products } = useApp();
+  const bases = products.filter((product) => product.category === "base");
+  const scripts = products.filter((product) => product.category === "script");
   const icons: Record<string, typeof Code2> = {
     city: Building2,
     code: Code2,
@@ -818,13 +835,18 @@ export function Store() {
       </div>
       {filter === "bases" && (
         <>
-          <div className="product-grid">
-            {products
-              .filter((p) => p.category === "base")
-              .map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
+          {bases.length ? (
+            <div className="product-grid">
+              {bases.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
               ))}
-          </div>
+            </div>
+          ) : (
+            <Empty title="Nenhuma base publicada">
+              As próximas bases aparecerão aqui assim que a equipe concluir a
+              configuração e a entrega.
+            </Empty>
+          )}
           <div className="store-assurance">
             <span>
               <ShieldCheck /> Suporte permanente nas bases
@@ -840,17 +862,11 @@ export function Store() {
       )}
       {filter === "scripts" && (
         <div className="store-managed-section">
-          {products.some((product) => product.category === "script") && (
+          {scripts.length > 0 && (
             <div className="product-grid">
-              {products
-                .filter((product) => product.category === "script")
-                .map((product, index) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    index={index}
-                  />
-                ))}
+              {scripts.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
             </div>
           )}
           <div className="services-grid">
@@ -1027,7 +1043,9 @@ export function ProductPage() {
   const { buy, products } = useApp();
   const p = products.find((p) => p.id === id);
   const [reference, setReference] = useState(false);
+  const referenceMedia = p?.gallery.find((media) => media.type === "image");
   if (!p) return <NotFound />;
+  const typeName = p.category === "base" ? "Base" : "Produto";
   return (
     <div className="container page">
       <Link className="breadcrumb" to="/loja">
@@ -1035,18 +1053,7 @@ export function ProductPage() {
       </Link>
       <div className="detail-grid product-detail">
         <div>
-          <div
-            className="product-visual large"
-            style={{
-              backgroundImage: `url(${source(p.image || "assets/banner.png")})`,
-            }}
-          >
-            <div className="product-caption">
-              <span>ScR Originals</span>
-              <strong>{p.title.toUpperCase()}</strong>
-              <small>{p.label}</small>
-            </div>
-          </div>
+          <ProductVisual product={p} large />
           <div className="reference-actions">
             {p.docs && (
               <a
@@ -1058,9 +1065,11 @@ export function ProductPage() {
                 <BookOpen size={17} /> Documentação
               </a>
             )}
-            <Button onClick={() => setReference(true)}>
-              Ver apresentação original
-            </Button>
+            {referenceMedia && (
+              <Button onClick={() => setReference(true)}>
+                Ver apresentação original
+              </Button>
+            )}
           </div>
           <div className="detail-description">
             <h2>Feita para construir.</h2>
@@ -1092,13 +1101,19 @@ export function ProductPage() {
           </div>
         </div>
         <aside className="detail-sidebar">
-          <span className="eyebrow">Base FiveM / {p.label}</span>
-          <h1>Base {p.title}</h1>
+          <span className="eyebrow">
+            {typeName} FiveM / {p.label}
+          </span>
+          <h1>
+            {p.category === "base" ? "Base " : ""}
+            {p.title}
+          </h1>
           <p>{p.subtitle}</p>
           <div className="price-large">{money(p.price)}</div>
           <small>Pagamento único · licença permanente</small>
           <Button className="primary full" onClick={() => buy(p.id)}>
-            <Package size={18} /> Comprar base
+            <Package size={18} /> Comprar{" "}
+            {p.category === "base" ? "base" : "produto"}
           </Button>
           <DiscordLink className="full">Tirar dúvidas</DiscordLink>
           <div className="included">
@@ -1117,14 +1132,14 @@ export function ProductPage() {
           </Link>
         </aside>
       </div>
-      {reference && (
+      {reference && referenceMedia && (
         <Modal
           title="Apresentação original ScR"
           onClose={() => setReference(false)}
         >
           <img
             className="reference-image"
-            src={source(p.image || "assets/banner.png")}
+            src={source(referenceMedia.url)}
             alt={"Apresentação de venda original da Base " + p.title}
           />
         </Modal>

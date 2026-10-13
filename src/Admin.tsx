@@ -91,6 +91,33 @@ function ProductEditor({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const featureList = features
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const publicationChecks = [
+    { label: "Imagem principal", ready: !!draft.image.trim() },
+    {
+      label: "Descrição completa",
+      ready: draft.description.trim().length >= 20,
+    },
+    { label: "Dois ou mais benefícios", ready: featureList.length >= 2 },
+    { label: "Link de entrega", ready: !!draft.deliveryUrl.trim() },
+    {
+      label: "Ticket ou liberação de licença",
+      ready: !!draft.licenseTicketUrl.trim(),
+    },
+    ...(draft.category === "base"
+      ? [
+          { label: "Documentação da base", ready: !!draft.docs.trim() },
+          {
+            label: "Cargo de cliente no Discord",
+            ready: !!draft.discordRoleId,
+          },
+        ]
+      : []),
+  ];
+  const readyToPublish = publicationChecks.every((check) => check.ready);
   const set = <K extends keyof Product>(key: K, value: Product[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
   async function uploadImage(file: File | undefined, cover = false) {
@@ -114,15 +141,18 @@ function ProductEditor({
   }
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (draft.published && !readyToPublish) {
+      setError(
+        "Conclua os itens pendentes da publicação ou salve o produto como oculto.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const payload = {
         ...draft,
-        features: features
-          .split("\n")
-          .map((item) => item.trim())
-          .filter(Boolean),
+        features: featureList,
       };
       await api("/admin/products" + (product ? "/" + product.id : ""), {
         method: product ? "PUT" : "POST",
@@ -287,7 +317,11 @@ function ProductEditor({
               <div key={`${media.url}-${index}`}>
                 {media.type === "image" ? (
                   <img
-                    src={media.url}
+                    src={
+                      media.url.startsWith("assets/")
+                        ? asset(media.url)
+                        : media.url
+                    }
                     alt={media.caption}
                     loading="lazy"
                     decoding="async"
@@ -387,6 +421,37 @@ function ProductEditor({
           />
           <span>Produto publicado e disponível para compra</span>
         </label>
+        <section
+          className={`product-readiness ${readyToPublish ? "ready" : ""}`}
+          aria-label="Condições para publicar"
+        >
+          <div>
+            <strong>
+              {readyToPublish
+                ? "Produto pronto para publicar"
+                : "Condições para publicar"}
+            </strong>
+            <small>
+              Produtos ocultos podem ser salvos enquanto você termina a
+              configuração.
+            </small>
+          </div>
+          <ul>
+            {publicationChecks.map((check) => (
+              <li
+                className={check.ready ? "complete" : "pending"}
+                key={check.label}
+              >
+                {check.ready ? (
+                  <ShieldCheck size={15} />
+                ) : (
+                  <span aria-hidden="true">•</span>
+                )}
+                {check.label}
+              </li>
+            ))}
+          </ul>
+        </section>
         {error && (
           <p className="error" role="alert">
             {error}
@@ -849,8 +914,8 @@ export default function Admin() {
         setCatalogProducts(defaultProducts);
         setAnalytics({
           summary: {
-            views: 2847,
-            visitors: 1216,
+            views: 1216,
+            visitors: 84,
             users: 438,
             active_users: 191,
           },
@@ -867,6 +932,9 @@ export default function Admin() {
               auth_provider: "email",
               last_login_at: new Date().toISOString(),
               last_login_ip: "200.***.***.42",
+              visits_today: 4,
+              visits_yesterday: 7,
+              visits_month: 39,
             },
           ],
           recent: [],
@@ -1069,10 +1137,30 @@ export default function Admin() {
                 {catalogProducts.map((product) => (
                   <tr key={product.id}>
                     <td>
-                      <strong>{product.title}</strong>
-                      <small>
-                        {product.label} · {product.id}
-                      </small>
+                      <div className="admin-product-cell">
+                        {product.image ? (
+                          <img
+                            src={
+                              product.image.startsWith("assets/")
+                                ? asset(product.image)
+                                : product.image
+                            }
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <span aria-hidden="true">
+                            <Package size={18} />
+                          </span>
+                        )}
+                        <div>
+                          <strong>{product.title}</strong>
+                          <small>
+                            {product.label} · {product.id}
+                          </small>
+                        </div>
+                      </div>
                     </td>
                     <td>{money(product.price)}</td>
                     <td>
@@ -1218,13 +1306,13 @@ export default function Admin() {
         <div className="analytics-panel">
           <div className="analytics-summary">
             <div>
-              <span>Visualizações · 30 dias</span>
+              <span>Visitantes únicos · 30 dias</span>
               <strong>
                 {Number(analytics.summary.views || 0).toLocaleString("pt-BR")}
               </strong>
             </div>
             <div>
-              <span>Visitantes únicos</span>
+              <span>Visitantes únicos · hoje</span>
               <strong>
                 {Number(analytics.summary.visitors || 0).toLocaleString(
                   "pt-BR",
@@ -1246,7 +1334,7 @@ export default function Admin() {
               </strong>
             </div>
           </div>
-          <h2>Páginas mais acessadas</h2>
+          <h2>Pessoas por página · 30 dias</h2>
           <div className="analytics-bars">
             {analytics.pages.map((page: any) => {
               const max = Math.max(
@@ -1274,6 +1362,7 @@ export default function Admin() {
                   <th>Usuário</th>
                   <th>E-mail</th>
                   <th>Login</th>
+                  <th>Visitas</th>
                   <th>Último IP</th>
                 </tr>
               </thead>
@@ -1298,6 +1387,34 @@ export default function Admin() {
                                 : "Z"),
                           ).toLocaleString("pt-BR")
                         : "Nunca"}
+                    </td>
+                    <td>
+                      <div className="visit-breakdown">
+                        <span>
+                          <b>
+                            {Number(account.visits_today || 0).toLocaleString(
+                              "pt-BR",
+                            )}
+                          </b>{" "}
+                          hoje
+                        </span>
+                        <span>
+                          <b>
+                            {Number(
+                              account.visits_yesterday || 0,
+                            ).toLocaleString("pt-BR")}
+                          </b>{" "}
+                          ontem
+                        </span>
+                        <span>
+                          <b>
+                            {Number(account.visits_month || 0).toLocaleString(
+                              "pt-BR",
+                            )}
+                          </b>{" "}
+                          no mês
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <code>{account.last_login_ip || "—"}</code>

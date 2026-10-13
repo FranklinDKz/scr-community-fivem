@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dayInBrazil,
   hashPassword,
+  productSchema,
   randomSalt,
   resourceSchema,
   verifyPassword,
@@ -43,5 +44,55 @@ describe("core security and business rules", () => {
       filename: null,
     });
     expect(result.success).toBe(false);
+  });
+
+  it("keeps incomplete products as drafts but blocks their publication", () => {
+    const incomplete = {
+      id: "base-teste",
+      title: "Base teste",
+      subtitle: "Uma base para testar",
+      price: 1000,
+      category: "base" as const,
+      image: "",
+      label: "Multi-framework",
+      docs: "",
+      video: "",
+      features: ["Instalação"],
+      description: "Descrição completa do produto que está em preparação.",
+      gallery: [],
+      discordRoleId: "",
+      deliveryUrl: "",
+      licenseTicketUrl: "",
+      published: false,
+      sortOrder: 100,
+    };
+    expect(productSchema.safeParse(incomplete).success).toBe(true);
+    expect(
+      productSchema.safeParse({ ...incomplete, published: true }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a complete published base", () => {
+    expect(
+      productSchema.safeParse({
+        id: "base-completa",
+        title: "Base completa",
+        subtitle: "Pronta para sua cidade",
+        price: 39990,
+        category: "base",
+        image: "assets/creative-v6-cover.svg",
+        label: "Multi-framework",
+        docs: "https://docs.example.com/base",
+        video: "",
+        features: ["Instalador", "Suporte permanente"],
+        description: "Descrição completa da base pronta para publicação.",
+        gallery: [],
+        discordRoleId: "1191845850436083722",
+        deliveryUrl: "https://example.com/instalador",
+        licenseTicketUrl: "https://discord.gg/exemplo",
+        published: true,
+        sortOrder: 10,
+      }).success,
+    ).toBe(true);
   });
 });

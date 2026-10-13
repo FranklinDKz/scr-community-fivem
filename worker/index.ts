@@ -880,9 +880,11 @@ async function route(req: Request, env: Env): Promise<Response> {
       .object({ sku: z.string().max(100), acceptTerms: z.literal(true) })
       .parse(await body(req));
     const managedProduct = await productBySku(env, payload.sku);
+    if (managedProduct && !managedProduct.published)
+      throw new HttpError(409, "Este produto não está disponível para compra.");
     let offer:
       { title: string; price: number; days: number | null } | undefined =
-      managedProduct?.published
+      managedProduct
         ? {
             title: managedProduct.title,
             price: managedProduct.price,
@@ -904,10 +906,15 @@ async function route(req: Request, env: Env): Promise<Response> {
         409,
         "Você já possui este produto. Consulte sua conta.",
       );
-    if (managedProduct && !managedProduct.deliveryUrl)
+    if (
+      managedProduct &&
+      (!managedProduct.deliveryUrl ||
+        !managedProduct.licenseTicketUrl ||
+        (managedProduct.category === "base" && !managedProduct.discordRoleId))
+    )
       throw new HttpError(
         409,
-        "A entrega deste produto ainda não foi configurada. Fale com a equipe no Discord.",
+        "A entrega deste produto ainda não está completa. Fale com a equipe no Discord.",
       );
     const id = crypto.randomUUID();
     const provider = env.INFINITEPAY_HANDLE ? "infinitepay" : "mercadopago";
@@ -1222,6 +1229,16 @@ async function route(req: Request, env: Env): Promise<Response> {
       return json({ ok: true });
     }
     if (productMatch && method === "DELETE") {
+      const orders = await env.DB.prepare(
+        "SELECT COUNT(*) total FROM orders WHERE sku=?",
+      )
+        .bind(productMatch[1])
+        .first<{ total: number }>();
+      if (Number(orders?.total || 0) > 0)
+        throw new HttpError(
+          409,
+          "Este produto já possui pedidos. Oculte a publicação em vez de excluir.",
+        );
       await env.DB.prepare("DELETE FROM products WHERE id=?")
         .bind(productMatch[1])
         .run();
@@ -1230,16 +1247,48 @@ async function route(req: Request, env: Env): Promise<Response> {
     if (p === "/api/admin/analytics" && method === "GET") {
       const [summary, daily, pages, users, recent] = await env.DB.batch([
         env.DB.prepare(
-          "SELECT COUNT(*) views,COUNT(DISTINCT visitor_hash) visitors,(SELECT COUNT(*) FROM users) users,(SELECT COUNT(*) FROM users WHERE last_login_at>=datetime('now','-30 days')) active_users FROM page_views WHERE created_at>=datetime('now','-30 days')",
+          `SELECT
+            COUNT(DISTINCT visitor_hash) views,
+            COUNT(DISTINCT CASE
+              WHEN date(created_at,'-3 hours')=date('now','-3 hours')
+              THEN visitor_hash
+            END) visitors,
+            (SELECT COUNT(*) FROM users) users,
+            (SELECT COUNT(*) FROM users WHERE last_login_at>=datetime('now','-30 days')) active_users
+          FROM page_views
+          WHERE created_at>=datetime('now','-30 days')`,
         ),
         env.DB.prepare(
-          "SELECT date(created_at) day,COUNT(*) views,COUNT(DISTINCT visitor_hash) visitors FROM page_views WHERE created_at>=datetime('now','-14 days') GROUP BY date(created_at) ORDER BY day",
+          `SELECT
+            date(created_at,'-3 hours') day,
+            COUNT(DISTINCT visitor_hash) views,
+            COUNT(DISTINCT visitor_hash) visitors
+          FROM page_views
+          WHERE created_at>=datetime('now','-14 days')
+          GROUP BY date(created_at,'-3 hours')
+          ORDER BY day`,
         ),
         env.DB.prepare(
-          "SELECT path,COUNT(*) views FROM page_views WHERE created_at>=datetime('now','-30 days') GROUP BY path ORDER BY views DESC LIMIT 10",
+          `SELECT
+            path,
+            COUNT(DISTINCT visitor_hash) views
+          FROM page_views
+          WHERE created_at>=datetime('now','-30 days')
+          GROUP BY path
+          ORDER BY views DESC
+          LIMIT 10`,
         ),
         env.DB.prepare(
-          "SELECT id,name,email,auth_provider,last_login_at,last_login_ip,created_at FROM users ORDER BY COALESCE(last_login_at,created_at) DESC LIMIT 200",
+          `SELECT
+            u.id,u.name,u.email,u.auth_provider,u.last_login_at,u.last_login_ip,u.created_at,
+            COUNT(CASE WHEN date(pv.created_at,'-3 hours')=date('now','-3 hours') THEN 1 END) visits_today,
+            COUNT(CASE WHEN date(pv.created_at,'-3 hours')=date('now','-3 hours','-1 day') THEN 1 END) visits_yesterday,
+            COUNT(CASE WHEN strftime('%Y-%m',pv.created_at,'-3 hours')=strftime('%Y-%m','now','-3 hours') THEN 1 END) visits_month
+          FROM users u
+          LEFT JOIN page_views pv ON pv.user_id=u.id
+          GROUP BY u.id
+          ORDER BY COALESCE(u.last_login_at,u.created_at) DESC
+          LIMIT 200`,
         ),
         env.DB.prepare(
           "SELECT path,ip_address,user_agent,created_at FROM page_views ORDER BY created_at DESC LIMIT 100",

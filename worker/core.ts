@@ -59,40 +59,76 @@ const httpsUrl = z
     "Use uma URL HTTPS ou uma mídia enviada.",
   );
 
-export const productSchema = z.object({
-  id: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9][a-z0-9-]{1,79}$/),
-  title: z.string().trim().min(2).max(100),
-  subtitle: z.string().trim().min(3).max(180),
-  price: z.number().int().min(100).max(10000000),
-  category: z.enum(["base", "script", "service"]),
-  image: httpsUrl,
-  label: z.string().trim().min(2).max(80),
-  docs: httpsUrl,
-  video: httpsUrl,
-  features: z.array(z.string().trim().min(2).max(240)).max(30),
-  description: z.string().trim().min(20).max(12000),
-  gallery: z
-    .array(
-      z.object({
-        type: z.enum(["image", "video"]),
-        url: httpsUrl.refine((value) => !!value, "Informe a mídia."),
-        caption: z.string().trim().max(500),
-      }),
-    )
-    .max(12),
-  discordRoleId: z
-    .string()
-    .trim()
-    .regex(/^\d{17,20}$/)
-    .or(z.literal("")),
-  deliveryUrl: httpsUrl,
-  licenseTicketUrl: httpsUrl,
-  published: z.boolean(),
-  sortOrder: z.number().int().min(0).max(10000),
-});
+export const productSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9-]{1,79}$/),
+    title: z.string().trim().min(2).max(100),
+    subtitle: z.string().trim().min(3).max(180),
+    price: z.number().int().min(100).max(10000000),
+    category: z.enum(["base", "script", "service"]),
+    image: httpsUrl,
+    label: z.string().trim().min(2).max(80),
+    docs: httpsUrl,
+    video: httpsUrl,
+    features: z.array(z.string().trim().min(2).max(240)).max(30),
+    description: z.string().trim().min(20).max(12000),
+    gallery: z
+      .array(
+        z.object({
+          type: z.enum(["image", "video"]),
+          url: httpsUrl.refine((value) => !!value, "Informe a mídia."),
+          caption: z.string().trim().max(500),
+        }),
+      )
+      .max(12),
+    discordRoleId: z
+      .string()
+      .trim()
+      .regex(/^\d{17,20}$/)
+      .or(z.literal("")),
+    deliveryUrl: httpsUrl,
+    licenseTicketUrl: httpsUrl,
+    published: z.boolean(),
+    sortOrder: z.number().int().min(0).max(10000),
+  })
+  .superRefine((product, context) => {
+    if (!product.published) return;
+    const required = (condition: boolean, path: string, message: string) => {
+      if (!condition)
+        context.addIssue({
+          code: "custom",
+          path: [path],
+          message,
+        });
+    };
+    required(!!product.image, "image", "Adicione uma imagem principal.");
+    required(
+      product.features.length >= 2,
+      "features",
+      "Informe pelo menos dois benefícios.",
+    );
+    required(
+      !!product.deliveryUrl,
+      "deliveryUrl",
+      "Configure o link de entrega.",
+    );
+    required(
+      !!product.licenseTicketUrl,
+      "licenseTicketUrl",
+      "Configure o link para liberar a licença ou abrir um ticket.",
+    );
+    if (product.category === "base") {
+      required(!!product.docs, "docs", "Adicione a documentação da base.");
+      required(
+        !!product.discordRoleId,
+        "discordRoleId",
+        "Configure o cargo de cliente da base no Discord.",
+      );
+    }
+  });
 
 export function productFromRow(r: Record<string, unknown>) {
   return {

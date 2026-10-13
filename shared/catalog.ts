@@ -50,7 +50,7 @@ export const products: Product[] = [
     subtitle: "Uma cidade pronta para a sua história.",
     price: 39990,
     category: "base",
-    image: "assets/creative-reference.png",
+    image: "assets/creative-v6-cover.svg",
     label: "Multi-framework",
     docs: "https://scr-community-1.gitbook.io/creative-v6-multi-framework",
     video: "https://www.youtube.com/watch?v=y3J5HJMhcTg",
@@ -64,7 +64,13 @@ export const products: Product[] = [
     ],
     description:
       "A base que reúne os sistemas essenciais para tirar sua cidade do papel. Baús, crafting, blips, fardas, veículos e locais configurados, com orientação da equipe ScR.",
-    gallery: [],
+    gallery: [
+      {
+        url: "assets/creative-reference.png",
+        type: "image",
+        caption: "Apresentação original da Creative V6 na ScR Store.",
+      },
+    ],
     discordRoleId: "1191845850436083722",
     deliveryUrl: "https://dk-license-api.onrender.com/download/instalador",
     licenseTicketUrl: DISCORD,
@@ -77,7 +83,7 @@ export const products: Product[] = [
     subtitle: "Sua cidade. Suas regras. Seu controle.",
     price: 79990,
     category: "base",
-    image: "assets/standalone-reference.png",
+    image: "assets/standalone-cover.svg",
     label: "Configuração in-game",
     docs: "https://scr-community.gitbook.io/base-standalone",
     video: "https://www.youtube.com/watch?v=vs1_ygaER6M",
@@ -91,7 +97,13 @@ export const products: Product[] = [
     ],
     description:
       "Mais autonomia para personalizar sua cidade. Ajuste sistemas, grupos e identidade visual dentro do jogo. Consulte a documentação para confirmar a compatibilidade dos seus scripts.",
-    gallery: [],
+    gallery: [
+      {
+        url: "assets/standalone-reference.png",
+        type: "image",
+        caption: "Apresentação original da Base Standalone na ScR Store.",
+      },
+    ],
     discordRoleId: "1524550741312929812",
     deliveryUrl: "https://dk-license-api.onrender.com/download/instalador",
     licenseTicketUrl: DISCORD,
