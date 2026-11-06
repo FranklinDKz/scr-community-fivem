@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /conta
+
+Sitemap: https://scr-community.dk-rp.workers.dev/sitemap.xml

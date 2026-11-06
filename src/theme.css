@@ -1,0 +1,615 @@
+/*
+  Tema: glassmorphism preto e branco.
+  Carrega depois de styles.css e sobrescreve tokens, superfícies e movimento.
+  Regras de performance: animações só em transform/opacity; blur apenas em
+  elementos fixos ou poucos e grandes; seções abaixo da dobra usam
+  content-visibility.
+*/
+:root {
+  --bg: #000;
+  --ink: #000;
+  --ink-raised: #0b0b0c;
+  --paper: #fafafa;
+  --ash: #a1a1a6;
+  --steel: #fff;
+  --bronze: #d4d4d8;
+  --accent: #fff;
+  --muted: #8e8e93;
+  --line: rgb(255 255 255 / 0.1);
+  --panel: rgb(255 255 255 / 0.04);
+  --glass: rgb(255 255 255 / 0.05);
+  --glass-strong: rgb(255 255 255 / 0.09);
+  --glass-line: rgb(255 255 255 / 0.12);
+  --glass-hi: inset 0 1px 0 rgb(255 255 255 / 0.12);
+  --blur: blur(20px) saturate(140%);
+  --display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: var(--paper);
+  background: var(--bg);
+  color-scheme: dark;
+}
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+}
+/* Fundo: dois halos brancos muito suaves, sem animação (custo zero). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      60rem 36rem at 12% -8%,
+      rgb(255 255 255 / 0.07),
+      transparent 70%
+    ),
+    radial-gradient(
+      50rem 30rem at 95% 30%,
+      rgb(255 255 255 / 0.04),
+      transparent 70%
+    ),
+    #000;
+}
+::selection {
+  background: #fff;
+  color: #000;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+h1 {
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+p {
+  color: var(--ash);
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+.eyebrow,
+.hero-tag,
+.category-badge,
+.resource-meta {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* ---------- Cabeçalho ---------- */
+.header {
+  background: rgb(0 0 0 / 0.55);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--glass-line);
+  box-shadow: none;
+}
+.nav a {
+  color: var(--ash);
+  border-radius: 999px;
+  transition:
+    color 0.25s var(--ease),
+    background-color 0.25s var(--ease);
+}
+.nav a:hover {
+  color: #fff;
+  background: var(--glass);
+}
+.nav a.active {
+  color: #000;
+  background: #fff;
+}
+.brand b {
+  color: #fff;
+}
+.brand img {
+  animation: none;
+  filter: grayscale(1) contrast(1.1);
+}
+.download-counter,
+.account-button {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  color: #fff;
+  border-radius: 999px;
+}
+
+/* ---------- Botões ---------- */
+.button {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+  transition:
+    transform 0.25s var(--ease),
+    background-color 0.25s var(--ease),
+    border-color 0.25s var(--ease),
+    color 0.25s var(--ease);
+}
+.button::after {
+  display: none;
+}
+.button:hover {
+  background: var(--glass-strong);
+  border-color: rgb(255 255 255 / 0.28);
+  transform: translateY(-2px);
+}
+.button:active {
+  transform: translateY(0) scale(0.98);
+}
+.button.primary,
+.button.promo {
+  color: #000;
+  background: #fff;
+  border-color: #fff;
+  box-shadow: 0 8px 30px -8px rgb(255 255 255 / 0.35);
+}
+.button.primary:hover,
+.button.promo:hover {
+  background: #e8e8ea;
+  border-color: #e8e8ea;
+}
+.button.promo {
+  background: transparent;
+  color: #fff;
+  border-color: var(--glass-line);
+  box-shadow: none;
+}
+.button.promo:hover {
+  background: var(--glass-strong);
+  border-color: rgb(255 255 255 / 0.28);
+}
+.button:disabled {
+  opacity: 0.45;
+  transform: none;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  isolation: isolate;
+}
+.hero::before,
+.hero::after {
+  display: none; /* partículas e órbitas animadas removidas */
+}
+.hero-image {
+  filter: grayscale(1) contrast(1.08) brightness(0.7);
+  transform-origin: 60% 50%;
+  animation: hero-drift 28s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.hero-overlay {
+  background:
+    linear-gradient(
+      90deg,
+      #000 0%,
+      rgb(0 0 0 / 0.78) 38%,
+      rgb(0 0 0 / 0.2) 100%
+    ),
+    linear-gradient(0deg, #000 0%, transparent 38%);
+}
+.hero h1 {
+  font-size: clamp(2.6rem, 6.4vw, 5.6rem);
+  line-height: 0.98;
+}
+.hero p {
+  color: #c7c7cc;
+  max-width: 34rem;
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+}
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #e5e5ea;
+}
+.tag-line {
+  animation: none;
+  background: #fff;
+}
+.hero-caption {
+  color: var(--muted);
+}
+.hero-content > * {
+  animation: rise 0.9s var(--ease) both;
+}
+.hero-content > :nth-child(2) {
+  animation-delay: 0.08s;
+}
+.hero-content > :nth-child(3) {
+  animation-delay: 0.16s;
+}
+.hero-content > :nth-child(4) {
+  animation-delay: 0.24s;
+}
+.hero-content > :nth-child(5) {
+  animation-delay: 0.32s;
+}
+
+/* ---------- Superfícies de vidro ---------- */
+.resource-card,
+.product-card,
+.trust-inner > div,
+.promotion-spotlight-plans > div,
+.promotion-plans article,
+.promotion-how > div,
+.quality,
+.support-teaser,
+.community,
+.faq details,
+.service-card,
+.partner-card,
+.checkout-summary,
+.account-access,
+.profile-settings,
+.empty,
+.table-wrap,
+.admin-stats > div,
+.detail-grid > *,
+.search,
+.framework-filter,
+.tabs {
+  background: linear-gradient(
+    160deg,
+    rgb(255 255 255 / 0.07),
+    rgb(255 255 255 / 0.025)
+  );
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    var(--glass-hi),
+    0 20px 50px -30px rgb(0 0 0 / 0.9);
+  border-radius: 20px;
+}
+.trust-strip {
+  background: transparent;
+  border: 0;
+}
+.trust-inner > div svg,
+.quality-icon,
+.quality-icon svg,
+.support-symbol,
+.support-symbol svg {
+  animation: none;
+  color: #fff;
+}
+.quality-icon,
+.support-symbol {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-line);
+}
+.support-symbol::after {
+  display: none;
+}
+.quality-mark,
+.category-badge,
+.exclusive-badge,
+.verified {
+  animation: none;
+  background: rgb(0 0 0 / 0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-line);
+  color: #fff;
+}
+.exclusive-badge {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+/* Cards de resource e produto */
+.resource-card,
+.product-card {
+  overflow: hidden;
+  transition:
+    transform 0.4s var(--ease),
+    border-color 0.4s var(--ease),
+    box-shadow 0.4s var(--ease);
+}
+.resource-cover img,
+.product-visual img {
+  filter: grayscale(0.85) contrast(1.05);
+  transition:
+    transform 0.8s var(--ease),
+    filter 0.5s var(--ease);
+}
+.cover-shade {
+  background: linear-gradient(0deg, rgb(0 0 0 / 0.75), transparent 60%);
+}
+.view-resource {
+  background: #fff;
+  color: #000;
+  border-radius: 999px;
+}
+@media (hover: hover) {
+  .resource-card:hover,
+  .product-card:hover {
+    transform: translateY(-6px);
+    border-color: rgb(255 255 255 / 0.3);
+    box-shadow:
+      var(--glass-hi),
+      0 30px 60px -28px rgb(255 255 255 / 0.18);
+  }
+  .resource-card:hover .resource-cover img,
+  .product-card:hover .product-visual img {
+    transform: scale(1.05);
+    filter: grayscale(0) contrast(1.05);
+  }
+}
+
+/* Destaque de divulgação */
+.promotion-spotlight {
+  background: transparent;
+  border: 0;
+}
+.promotion-spotlight::before,
+.promotion-spotlight-plans > div.featured::after {
+  display: none;
+}
+.promotion-spotlight-plans > div.featured,
+.promotion-plans article.featured-plan {
+  animation: none;
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+.promotion-spotlight-plans > div.featured *,
+.promotion-plans article.featured-plan * {
+  color: #000;
+}
+
+/* ---------- Formulários e abas ---------- */
+.tabs button {
+  color: var(--ash);
+  border-radius: 999px;
+  transition:
+    background-color 0.25s var(--ease),
+    color 0.25s var(--ease);
+}
+.tabs button.active,
+.tabs button[aria-pressed="true"] {
+  background: #fff;
+  color: #000;
+}
+input,
+select,
+textarea {
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid var(--glass-line);
+  color: #fff;
+  border-radius: 12px;
+  transition:
+    border-color 0.2s var(--ease),
+    background-color 0.2s var(--ease);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #fff;
+  background: rgb(255 255 255 / 0.08);
+}
+.search input,
+.search select {
+  background: transparent;
+  border: 0;
+}
+.search:focus-within,
+.form label:focus-within,
+.upload-box:hover {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.12);
+}
+
+/* ---------- FAQ ---------- */
+.faq details {
+  transition: background-color 0.3s var(--ease);
+}
+.faq details[open] {
+  background: var(--glass-strong);
+}
+.faq summary svg {
+  transition: transform 0.35s var(--ease);
+}
+.faq details[open] summary svg {
+  transform: rotate(45deg);
+}
+
+/* ---------- Modais, cookies, toast ---------- */
+.modal {
+  background: rgb(14 14 16 / 0.85);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    var(--glass-hi),
+    0 40px 100px -20px #000;
+  border-radius: 24px;
+  color: #fff;
+}
+.modal::backdrop {
+  background: rgb(0 0 0 / 0.65);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.cookie-panel,
+.toast {
+  background: rgb(14 14 16 / 0.8);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    var(--glass-hi),
+    0 24px 60px -16px #000;
+  border-radius: 20px;
+  color: #fff;
+}
+
+/* ---------- Rodapé ---------- */
+footer {
+  background: transparent;
+  border-top: 1px solid var(--glass-line);
+}
+.footer-links a,
+.footer-preferences {
+  color: var(--ash);
+  transition: color 0.2s var(--ease);
+}
+.footer-links a:hover,
+.footer-preferences:hover {
+  color: #fff;
+}
+
+/* ---------- Entrada ao rolar ---------- */
+.motion-ready .reveal-target:not(.is-visible) {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+}
+.motion-ready .reveal-target {
+  transition:
+    opacity 0.8s var(--ease) var(--reveal-delay, 0ms),
+    transform 0.8s var(--ease) var(--reveal-delay, 0ms),
+    border-color 0.4s var(--ease),
+    box-shadow 0.4s var(--ease);
+}
+.motion-ready .resource-card.reveal-target.is-visible:hover,
+.motion-ready .product-card.reveal-target.is-visible:hover {
+  transition-delay: 0ms;
+}
+.page-shell {
+  animation: route-in 0.5s var(--ease) both;
+}
+
+/* Seções longas só renderizam quando chegam perto da tela. */
+.section,
+.faq,
+.community,
+.support-teaser,
+footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 520px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes route-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hero-drift {
+  from {
+    transform: scale(1.04) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.12) translate3d(-1.5%, -1%, 0);
+  }
+}
+
+/* Telas sem suporte a blur ganham fundo mais opaco. */
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .header,
+  .modal,
+  .cookie-panel,
+  .toast {
+    background: rgb(12 12 14 / 0.96);
+  }
+}
+
+/* Quem pediu menos movimento não recebe animação nenhuma. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .motion-ready .reveal-target:not(.is-visible) {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Celular: menos efeito, mais bateria. */
+@media (max-width: 720px) {
+  .hero-image {
+    animation: none;
+  }
+  .resource-card,
+  .product-card,
+  .quality,
+  .support-teaser,
+  .community {
+    border-radius: 16px;
+  }
+}
+
+/* Ajuste: link ativo do menu como pílula compacta, não faixa da altura do header. */
+.nav {
+  align-items: center;
+}
+.nav a {
+  align-self: center;
+  height: auto;
+  min-height: 0;
+  padding: 0.55rem 1.05rem;
+  line-height: 1.2;
+}
+.nav a::after,
+.nav a::before {
+  display: none;
+}

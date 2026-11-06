@@ -227,35 +227,35 @@ export function Home() {
       <section className="hero">
         <img
           className="hero-image"
-          src={asset("assets/scene.png")}
-          alt="Cena ilustrativa de um carro esportivo em uma cidade à noite"
+          src={asset("assets/scene.webp")}
+          alt="Carro esportivo em uma rua da cidade à noite, cena de um servidor FiveM"
           decoding="async"
           fetchPriority="high"
         />
         <div className="hero-overlay" />
         <div className="container hero-content">
           <div className="hero-tag">
-            <span className="tag-line" /> ScR Community, edição 2026
+            <span className="tag-line" /> Catálogo FiveM em português
           </div>
           <h1>
-            Tudo para o seu FiveM.
+            Scripts, mapas e bases
             <br />
-            Sem caça ao tesouro.
+            para o seu FiveM.
           </h1>
           <p>
-            Scripts, mapas, bases e suporte reunidos em um catálogo cuidado por
-            quem trabalha com FiveM todos os dias.
+            Cada arquivo é testado antes de entrar no catálogo. Você vê
+            framework, versão e dependências antes de baixar.
           </p>
           <div className="hero-actions">
             <Link className="button primary" to="/resources">
               <Download size={18} />
-              Explorar resources
+              Ver resources grátis
             </Link>
             <Link className="button promo" to="/loja?tab=divulgue">
-              <Sparkles size={17} /> Divulgue seu projeto
+              <Sparkles size={17} /> Divulgar meu projeto
             </Link>
             <Link className="button glass" to="/loja">
-              Conhecer nossas bases
+              Ver bases e preços
             </Link>
           </div>
           <div className="hero-bottom">
@@ -269,7 +269,7 @@ export function Home() {
           </div>
         </div>
         <div className="hero-caption">
-          Um arquivo vivo para quem constrói cidades.
+          Atualizado pela equipe ScR a cada lançamento.
         </div>
       </section>
       <div className="trust-strip">
@@ -277,26 +277,28 @@ export function Home() {
           <div>
             <ShieldCheck />
             <span>
-              Revisão humana<strong>Arquivo conferido antes de publicar</strong>
+              Revisão manual
+              <strong>Todo arquivo é aberto e testado antes de ir ao ar</strong>
             </span>
           </div>
           <div>
             <Terminal />
             <span>
-              Prontos para configurar
-              <strong>Compatibilidade explicada sem enrolação</strong>
+              Instalação clara
+              <strong>Framework e dependências indicados em cada página</strong>
             </span>
           </div>
           <div>
             <Gauge />
             <span>
-              Foco em performance<strong>Menos peso, menos retrabalho</strong>
+              Performance<strong>Foco em resources leves</strong>
             </span>
           </div>
           <div>
             <MessageCircle />
             <span>
-              Suporte próximo<strong>Você fala com quem entende</strong>
+              Suporte direto
+              <strong>Resposta de quem mantém servidores FiveM</strong>
             </span>
           </div>
         </div>
@@ -306,17 +308,16 @@ export function Home() {
           <div className="promotion-spotlight-copy">
             <span className="eyebrow">Espaço para criadores e comunidades</span>
             <h2>
-              Seu trabalho merece vitrine.
-              <br />E público certo.
+              Mostre seu script ou sua cidade
+              <br />a quem procura FiveM.
             </h2>
             <p>
-              Anuncie seu trabalho para quem já procura resources de FiveM. Você
-              escolhe o plano, envia descrição, imagens, vídeo, preço e link de
-              contato; a equipe ScR revisa e publica sua vitrine.
+              Escolha um plano, envie descrição, imagens, vídeo, preço e link de
+              contato. A equipe revisa e publica sua página no catálogo.
             </p>
             <div className="promotion-spotlight-actions">
               <Link className="button primary" to="/loja?tab=divulgue">
-                <Sparkles size={17} /> Quero divulgar
+                <Sparkles size={17} /> Escolher um plano
               </Link>
               <a
                 className="button glass"
@@ -350,8 +351,8 @@ export function Home() {
       <section className="container section">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">O próximo upgrade está aqui</span>
-            <h2>Explore os resources.</h2>
+            <span className="eyebrow">Catálogo</span>
+            <h2>Últimos resources.</h2>
           </div>
           <Link className="subtle-link" to="/resources">
             Ver catálogo completo <Layers3 size={16} />
@@ -364,15 +365,15 @@ export function Home() {
           <ShieldCheck size={34} />
         </div>
         <div>
-          <h3>Seu servidor merece cuidado.</h3>
+          <h3>O que significa o selo ScR.</h3>
           <p>
-            Testes, configuração, otimização e correções fazem parte da nossa
-            curadoria. Cada resource só recebe o selo ScR depois da revisão da
-            equipe.
+            A equipe baixa o arquivo, instala em uma base de teste, confere
+            dependências e licença de distribuição, e só então publica. Sem o
+            selo, o resource aparece como “Em revisão”.
           </p>
         </div>
         <span className="quality-mark">
-          <Check size={15} /> Compromisso ScR
+          <Check size={15} /> Revisado
         </span>
       </section>
       <section className="container section store-teaser">
@@ -380,15 +381,15 @@ export function Home() {
           <div>
             <span className="eyebrow">ScR Store</span>
             <h2>
-              Uma base forte.
+              Bases FiveM
               <br />
-              Uma cidade sem limites.
+              com suporte incluso.
             </h2>
           </div>
           <p>
-            Comece com estrutura. Dê a sua identidade.
+            Você começa com a estrutura pronta e muda o que quiser.
             <br />
-            Conte com quem entende de FiveM.
+            Suporte da equipe incluído na compra.
           </p>
         </div>
         <div className="product-grid">
@@ -405,42 +406,42 @@ export function Home() {
           <span>ScR</span>
         </div>
         <div>
-          <span className="eyebrow">
-            Você não precisa resolver tudo sozinho
-          </span>
-          <h2>Seu time fora do jogo.</h2>
+          <span className="eyebrow">Suporte</span>
+          <h2>Deu erro no console? Pergunte.</h2>
           <p>
-            Instalação, configuração e ajuda de verdade. Nossa equipe e a IA ScR
-            ao lado do seu projeto.
+            Abra um chamado para a equipe ou use a IA ScR para erros de
+            instalação e configuração.
           </p>
         </div>
         <Link to="/suporte" className="button primary">
-          Conhecer o suporte <Headphones size={18} />
+          Abrir suporte <Headphones size={18} />
         </Link>
       </section>
       <section className="container community">
         <div>
-          <span className="eyebrow">Bem-vindo à ScR Community</span>
+          <span className="eyebrow">Comunidade</span>
           <h2>
-            Quem constrói junto,
+            Fale com a equipe
             <br />
-            vai mais longe.
+            no Discord.
           </h2>
           <p>
-            Troque ideias, acompanhe os lançamentos e converse com o DK RP e a
-            equipe. Sua comunidade também está aqui.
+            Veja os lançamentos primeiro, tire dúvidas e converse com o DK RP e
+            outros donos de servidor.
           </p>
           <DiscordLink className="primary" />
         </div>
         <img
-          src={asset("assets/banner.png")}
-          alt="ScR Community"
+          src={asset("assets/banner.webp")}
+          alt="Banner da ScR Community no Discord"
+          width="1200"
+          height="400"
           loading="lazy"
           decoding="async"
         />
       </section>
       <section className="container faq section">
-        <h2>Antes de entrar no jogo.</h2>
+        <h2>Perguntas frequentes</h2>
         {[
           [
             "Os resources são gratuitos?",
@@ -514,8 +515,8 @@ function ProductVisual({
   product: Product;
   large?: boolean;
 }) {
-  const fallback = source("assets/banner.png");
-  const requested = source(p.image || "assets/banner.png");
+  const fallback = source("assets/banner.webp");
+  const requested = source(p.image || "assets/banner.webp");
   const [image, setImage] = useState(requested);
   useEffect(() => setImage(requested), [requested]);
   return (
@@ -1753,7 +1754,7 @@ export function Account() {
         <Button
           onClick={async () => {
             await logout();
-            window.location.hash = "#/conta?cadastro=1";
+            window.location.assign("/conta?cadastro=1");
           }}
         >
           Criar outra conta
