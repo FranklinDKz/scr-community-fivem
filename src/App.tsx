@@ -1,12 +1,21 @@
 import {
   createContext,
+  lazy,
+  Suspense,
   useContext,
   useEffect,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   Menu,
   X,
@@ -40,7 +49,9 @@ import {
   Legal,
   NotFound,
 } from "./pages";
-import Admin from "./Admin";
+import { useSeo } from "./seo";
+
+const Admin = lazy(() => import("./Admin"));
 export type Me = {
   user: {
     id: string;
@@ -72,37 +83,6 @@ type Context = {
 };
 const AppContext = createContext<Context>(null!);
 export const useApp = () => useContext(AppContext);
-
-function FirstVisitIntro() {
-  return (
-    <div
-      className="site-intro"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Preparando a ScR Community"
-    >
-      <div className="site-intro-particles" aria-hidden="true" />
-      <div className="site-intro-content">
-        <div className="site-intro-brand">
-          <img src={asset("assets/logo.png")} alt="" />
-          <span>ScR Community</span>
-        </div>
-        <span className="site-intro-kicker">Free Resources FiveM</span>
-        <h1>Preparando sua próxima cidade.</h1>
-        <p>Organizando resources, mapas, bases e serviços para você.</p>
-        <div className="site-intro-progress" aria-hidden="true">
-          <i />
-        </div>
-        <div className="site-intro-status" aria-hidden="true">
-          <span>Verificando catálogo</span>
-          <span>Carregando experiência</span>
-          <span>Tudo pronto</span>
-        </div>
-        <small>A primeira abertura leva 10 segundos.</small>
-      </div>
-    </div>
-  );
-}
 
 export function Button({
   children,
@@ -367,17 +347,6 @@ export default function App() {
     [loadError, setLoadError] = useState(""),
     [notification, setNotification] = useState(""),
     [menu, setMenu] = useState(false),
-    [introVisible, setIntroVisible] = useState(() => {
-      try {
-        return !(
-          localStorage.getItem("scr_intro_complete") === "1" ||
-          localStorage.getItem("scr_preferences") ||
-          localStorage.getItem("scr_visitor_id")
-        );
-      } catch {
-        return true;
-      }
-    }),
     [checkout, setCheckout] = useState<{
       sku: string;
       title: string;
@@ -399,6 +368,8 @@ export default function App() {
     }
   });
   const location = useLocation();
+  const navigate = useNavigate();
+  useSeo(location.pathname);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const audioContext = useRef<AudioContext | null>(null);
   const toast = (message: string) => {
@@ -436,32 +407,6 @@ export default function App() {
     void reload();
     return () => clearTimeout(timer.current);
   }, []);
-  useEffect(() => {
-    if (!introVisible) return;
-    document.body.classList.add("intro-active");
-    const introTimer = window.setTimeout(() => {
-      try {
-        localStorage.setItem("scr_intro_complete", "1");
-      } catch {
-        // The intro still completes when storage is unavailable.
-      }
-      document.body.classList.remove("intro-active");
-      setIntroVisible(false);
-    }, 10_000);
-    return () => {
-      window.clearTimeout(introTimer);
-      document.body.classList.remove("intro-active");
-    };
-  }, [introVisible]);
-  useEffect(() => {
-    if (!introVisible || !me.user) return;
-    try {
-      localStorage.setItem("scr_intro_complete", "1");
-    } catch {
-      // Logged-in visitors can continue even when storage is unavailable.
-    }
-    setIntroVisible(false);
-  }, [introVisible, me.user]);
   useEffect(() => {
     setMenu(false);
     window.scrollTo(0, 0);
@@ -572,7 +517,7 @@ export default function App() {
       });
   };
   const login = () => {
-    window.location.hash = "#/conta";
+    navigate("/conta");
   };
   return (
     <AppContext.Provider
@@ -591,7 +536,6 @@ export default function App() {
         setPreferences,
       }}
     >
-      {introVisible && <FirstVisitIntro />}
       <a className="skip-link" href="#main">
         Pular para o conteúdo
       </a>
@@ -656,19 +600,27 @@ export default function App() {
         </div>
       </header>
       <main id="main" className="page-shell" key={location.pathname}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/resources" element={<Catalog />} />
-          <Route path="/resources/:id" element={<ResourcePage />} />
-          <Route path="/loja" element={<Store />} />
-          <Route path="/loja/:id" element={<ProductPage />} />
-          <Route path="/suporte" element={<Support />} />
-          <Route path="/conta" element={<Account />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/termos" element={<Legal />} />
-          <Route path="/privacidade" element={<Legal privacy />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense
+          fallback={
+            <div className="loading" role="status">
+              <LoaderCircle className="spin" /> Carregando...
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/resources" element={<Catalog />} />
+            <Route path="/resources/:id" element={<ResourcePage />} />
+            <Route path="/loja" element={<Store />} />
+            <Route path="/loja/:id" element={<ProductPage />} />
+            <Route path="/suporte" element={<Support />} />
+            <Route path="/conta" element={<Account />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/termos" element={<Legal />} />
+            <Route path="/privacidade" element={<Legal privacy />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </main>
       <footer>
         <div className="container footer-main">

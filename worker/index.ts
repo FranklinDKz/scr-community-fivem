@@ -491,10 +491,10 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if (p === "/api/auth/discord") {
     if (!env.DISCORD_CLIENT_ID || !env.DISCORD_CLIENT_SECRET)
-      return redirect(env.APP_URL + "/#/conta?notice=login-unavailable");
+      return redirect(env.APP_URL + "/conta?notice=login-unavailable");
     const linking = url.searchParams.get("link") === "1";
     if (linking && !(await session(req, env)))
-      return redirect(env.APP_URL + "/#/conta?notice=login-required");
+      return redirect(env.APP_URL + "/conta?notice=login-required");
     const state = token();
     const auth = new URL("https://discord.com/oauth2/authorize");
     auth.search = new URLSearchParams({
@@ -519,7 +519,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       state !== cookie(req, "scr_oauth") ||
       !url.searchParams.get("code")
     )
-      return redirect(env.APP_URL + "/#/conta?notice=login-failed", {
+      return redirect(env.APP_URL + "/conta?notice=login-failed", {
         "Set-Cookie": cookieHeader(env, "scr_oauth", "", 0),
       });
     const response = await fetch("https://discord.com/api/oauth2/token", {
@@ -566,14 +566,14 @@ async function route(req: Request, env: Env): Promise<Response> {
     if (cookie(req, "scr_oauth_link") === "1") {
       const active = await session(req, env);
       if (!active)
-        return redirect(env.APP_URL + "/#/conta?notice=login-required");
+        return redirect(env.APP_URL + "/conta?notice=login-required");
       const claimed = await env.DB.prepare(
         "SELECT id FROM users WHERE discord_id=? AND id<>?",
       )
         .bind(u.id, active.id)
         .first();
       if (claimed)
-        return redirect(env.APP_URL + "/#/conta?notice=discord-in-use");
+        return redirect(env.APP_URL + "/conta?notice=discord-in-use");
       await env.DB.prepare(
         "UPDATE users SET discord_id=?,avatar=COALESCE(avatar,?) WHERE id=?",
       )
@@ -593,7 +593,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       for (const order of pending.results)
         await grantDiscordRole(env, order.id).catch(() => undefined);
       const linkHeaders = new Headers({
-        Location: env.APP_URL + "/#/conta?discord=vinculado",
+        Location: env.APP_URL + "/conta?discord=vinculado",
       });
       linkHeaders.append("Set-Cookie", cookieHeader(env, "scr_oauth", "", 0));
       linkHeaders.append(
@@ -618,7 +618,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       )
       .run();
     const created = await createSession(env, u.id, true);
-    const headers = new Headers({ Location: env.APP_URL + "/#/conta" });
+    const headers = new Headers({ Location: env.APP_URL + "/conta" });
     headers.append(
       "Set-Cookie",
       cookieHeader(env, "scr_session", created.raw, created.maxAge),
@@ -726,7 +726,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       transactionNsu: payload.transaction_nsu,
     });
     return redirect(
-      `${env.APP_URL}/#/conta?pagamento=${result.paid ? "confirmado" : "pendente"}`,
+      `${env.APP_URL}/conta?pagamento=${result.paid ? "confirmado" : "pendente"}`,
     );
   }
   if (p.startsWith("/api/media/") && method === "GET") {
@@ -962,9 +962,9 @@ async function route(req: Request, env: Env): Promise<Response> {
         external_reference: id,
         notification_url: env.APP_URL + "/api/webhooks/mercadopago",
         back_urls: {
-          success: env.APP_URL + "/#/conta?pagamento=retorno",
-          pending: env.APP_URL + "/#/conta?pagamento=pendente",
-          failure: env.APP_URL + "/#/conta?pagamento=falhou",
+          success: env.APP_URL + "/conta?pagamento=retorno",
+          pending: env.APP_URL + "/conta?pagamento=pendente",
+          failure: env.APP_URL + "/conta?pagamento=falhou",
         },
         auto_return: "approved",
       }),
